@@ -27,5 +27,5 @@ This is the initial version of the Cloud Security Scanner, a command-line tool w
 Execute the script from your terminal:
 
 ```bash
-
+python s3_scanner.py
 ```
