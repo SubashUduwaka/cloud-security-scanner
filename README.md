@@ -7,7 +7,7 @@ This version introduces a decoupled frontend, transforming the project into a fu
 - **Decoupled Frontend:** A simple, clean user interface built with HTML, CSS, and vanilla JavaScript.
 - **Dynamic Results:** The frontend calls the backend API, fetches the scan results, and dynamically displays them on the page without a reload.
 - **CORS Enabled Backend:** The Flask server now uses `Flask-Cors` to allow cross-origin requests from the frontend.
-=======
+
 # Cloud Security Scanner v0.2
 
 This version evolves the Cloud Security Scanner from a simple command-line script into a web-based API using the Flask framework. The core scanning logic is now exposed via an HTTP endpoint, allowing it to be integrated with other tools or a future web interface.
@@ -26,7 +26,7 @@ This version requires running two components: the backend server and the fronten
 
 
 1. Navigate to the project's root directory.
-=======
+
 ### Setup
 
 1. Clone the repository or download the files.
