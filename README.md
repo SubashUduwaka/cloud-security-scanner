@@ -37,21 +37,3 @@ This version requires running two components: the backend server and the fronten
 1. Navigate to the `frontend` folder.
 2. Open the `index.html` file directly in your web browser (e.g., by double-clicking it).
 3. Click the "Run S3 Scan" button to see the results.
-### Running the Application
-
-1. Start the Flask web server from your terminal:
-   
-   ```bash
-   python app.py
-   ```
-
-2. The server will start running on `http://127.0.0.1:5000`.
-
-3. To trigger a scan, open your web browser or use a tool like Postman to access the following URL:
-   
-   ```
-   [http://127.0.0.1:5000/api/v1/scan](http://127.0.0.1:5000/api/v1/scan)
-   ```
-   
-   The scan results will be displayed in your browser as a JSON object.
-
