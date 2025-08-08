@@ -1,31 +1,34 @@
-# Cloud Security Scanner v0.1
+# Cloud Security Scanner v0.3
 
-This is the initial version of the Cloud Security Scanner, a command-line tool written in Python to check for common security misconfigurations in Amazon Web Services (AWS).
+This version introduces a decoupled frontend, transforming the project into a full-stack web application. The backend now serves a dedicated API, and the user interface is a standalone set of HTML, CSS, and JavaScript files that consume this API.
 
 ## Features
 
-- **S3 Public Bucket Scanner:** This script scans all S3 buckets in an AWS account and identifies any that may be publicly accessible.
+- **Decoupled Frontend:** A simple, clean user interface built with HTML, CSS, and vanilla JavaScript.
+- **Dynamic Results:** The frontend calls the backend API, fetches the scan results, and dynamically displays them on the page without a reload.
+- **CORS Enabled Backend:** The Flask server now uses `Flask-Cors` to allow cross-origin requests from the frontend.
 
 ## How to Use
 
-### Prerequisites
+This version requires running two components: the backend server and the frontend page.
 
-- Python 3
-- An AWS account with credentials configured on your machine.
+### 1. Run the Backend
 
-### Setup
-
-1. Clone the repository or download the files.
-2. Install the required library:
+1. Navigate to the project's root directory.
+2. Install the required libraries:
    
    ```bash
    pip install -r requirements.txt
    ```
+3. Start the Flask web server:
+   
+   ```bash
+   python app.py
+   ```
+4. The API server will be running on `http://127.0.0.1:5000`.
 
-### Running the Scan
+### 2. Run the Frontend
 
-Execute the script from your terminal:
-
-```bash
-python s3_scanner.py
-```
+1. Navigate to the `frontend` folder.
+2. Open the `index.html` file directly in your web browser (e.g., by double-clicking it).
+3. Click the "Run S3 Scan" button to see the results.
