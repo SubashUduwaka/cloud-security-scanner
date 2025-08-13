@@ -15,6 +15,10 @@ This version introduces a decoupled frontend and a persistent database, transfor
 - **Historical Scans API Endpoint:** A new endpoint, `/api/v1/history`, has been created to serve all past scan results from the database.
 
 - **Database Migrations:** The project uses `Flask-Migrate` to manage the database schema.
+- **Decoupled Frontend:** A simple, clean user interface built with HTML, CSS, and vanilla JavaScript.
+- **Dynamic Results:** The frontend calls the backend API, fetches the scan results, and dynamically displays them on the page without a reload.
+- **CORS Enabled Backend:** The Flask server now uses `Flask-Cors` to allow cross-origin requests from the frontend.
+ec57fe706f6b906f40527be97145e576417adea5
 
 ## How to Use
 
@@ -23,6 +27,9 @@ This version requires running two components: the backend server and the fronten
 ### 1. Set Up the Backend
 
 1. Navigate to the project's root directory.
+
+
+### Setup
 
 2. Install the required libraries:
    
@@ -66,3 +73,5 @@ This version requires running two components: the backend server and the fronten
 2. Open the `index.html` file directly in your web browser (e.g., by double-clicking it).
 
 3. Click the "Run Scan" button to see the results.
+
+3. Click the "Run S3 Scan" button to see the results.
