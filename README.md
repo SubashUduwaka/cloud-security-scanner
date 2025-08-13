@@ -6,9 +6,9 @@ This version introduces a decoupled frontend and a persistent database, transfor
 
 ## Features
 
-- **Decoupled Frontend:** A simple, clean user interface built with HTML, CSS, and vanilla JavaScript provides a user-friendly way to run scans and view results. 1
+- **Decoupled Frontend:** A simple, clean user interface built with HTML, CSS, and vanilla JavaScript provides a user-friendly way to run scans and view results. 
 
-- **Dynamic API Calls:** The frontend uses the `fetch` API to communicate with the backend, allowing for a modern, single-page application feel. 2
+- **Dynamic API Calls:** The frontend uses the `fetch` API to communicate with the backend, allowing for a modern, single-page application feel. 
 
 - **SQLite Database Integration:** The backend now uses `Flask-SQLAlchemy` to save every scan result to a persistent `app.db` file.
 
