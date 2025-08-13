@@ -1,24 +1,18 @@
+# Cloud Security Scanner v0.5-alpha
 
-
-# Cloud Security Scanner v0.4
-
-This version introduces a decoupled frontend and a persistent database, transforming the project into a full-stack web application. The backend now serves a dedicated API that remembers scan history, and the user interface is a standalone set of HTML, CSS, and JavaScript files that consume this API.
+This version expands the scanner's capabilities to include IAM checks and introduces a visual dashboard to summarize the security posture.
 
 ## Features
 
-- **Decoupled Frontend:** A simple, clean user interface built with HTML, CSS, and vanilla JavaScript provides a user-friendly way to run scans and view results. 1
+- **IAM Access Key Scanner**: A new module that checks for IAM user access keys that have not been rotated in over 90 days.
 
-- **Dynamic API Calls:** The frontend uses the `fetch` API to communicate with the backend, allowing for a modern, single-page application feel. 2
+- **Dashboard Chart**: The frontend now includes a doughnut chart powered by Chart.js to provide a quick visual summary of "OK" vs. "CRITICAL" findings.
 
-- **SQLite Database Integration:** The backend now uses `Flask-SQLAlchemy` to save every scan result to a persistent `app.db` file.
+- **Decoupled Frontend:** A simple, clean user interface built with HTML, CSS, and vanilla JavaScript.
+
+- **SQLite Database Integration:** The backend uses `Flask-SQLAlchemy` to save every scan result to a persistent `app.db` file.
 
 - **Historical Scans API Endpoint:** A new endpoint, `/api/v1/history`, has been created to serve all past scan results from the database.
-
-- **Database Migrations:** The project uses `Flask-Migrate` to manage the database schema.
-- **Decoupled Frontend:** A simple, clean user interface built with HTML, CSS, and vanilla JavaScript.
-- **Dynamic Results:** The frontend calls the backend API, fetches the scan results, and dynamically displays them on the page without a reload.
-- **CORS Enabled Backend:** The Flask server now uses `Flask-Cors` to allow cross-origin requests from the frontend.
-ec57fe706f6b906f40527be97145e576417adea5
 
 ## How to Use
 
@@ -28,12 +22,7 @@ This version requires running two components: the backend server and the fronten
 
 1. Navigate to the project's root directory.
 
-
-### Setup
-
 2. Install the required libraries:
-   
-   Bash
    
    ```
    pip install -r requirements.txt
@@ -42,8 +31,6 @@ This version requires running two components: the backend server and the fronten
 3. Initialize the Database (First-Time Setup Only)
    
    You need to create the database and its tables. These commands use Flask-Migrate to set up your app.db file.
-   
-   Bash
    
    ```
    # Creates the migrations folder (only run this once per project)
@@ -58,8 +45,6 @@ This version requires running two components: the backend server and the fronten
 
 4. Start the Flask web server:
    
-   Bash
-   
    ```
    python app.py
    ```
@@ -73,5 +58,3 @@ This version requires running two components: the backend server and the fronten
 2. Open the `index.html` file directly in your web browser (e.g., by double-clicking it).
 
 3. Click the "Run Scan" button to see the results.
-
-3. Click the "Run S3 Scan" button to see the results.

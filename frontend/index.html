@@ -4,6 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Cloud Security Scanner Dashboard</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
@@ -13,6 +14,11 @@
     </header>
 
     <main>
+        <div class="dashboard-chart">
+            <h2>Security Posture Summary</h2>
+            <canvas id="postureChart"></canvas>
+        </div>
+
         <div class="controls">
             <button id="scanButton">Run Scan</button>
             <div id="statusMessage"></div>

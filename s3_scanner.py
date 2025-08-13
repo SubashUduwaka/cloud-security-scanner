@@ -1,5 +1,6 @@
 # s3_scanner.py
 import boto3
+import datetime
 
 def scan_s3_buckets():
     """
@@ -75,6 +76,7 @@ def scan_rds_encryption():
         if not db_instances:
             results.append({
                 "service": "RDS",
+                "resource": "N/A",
                 "status": "OK",
                 "issue": "No RDS instances found."
             })
@@ -164,6 +166,63 @@ def scan_ec2_public_access():
         
     return results
 
+def scan_iam_users():
+    """
+    Let's check if anyone has an ancient access key they should have rotated ages ago.
+    """
+    results = []
+    iam = boto3.client('iam')
+    
+    try:
+        # Paginator is a fancy way to handle lots of users without crashing.
+        paginator = iam.get_paginator('list_users')
+        for response in paginator.paginate():
+            for user in response['Users']:
+                username = user['UserName']
+
+                key_response = iam.list_access_keys(UserName=username)
+                for key in key_response['AccessKeyMetadata']:
+                    last_used_response = iam.get_access_key_last_used(
+                        AccessKeyId=key['AccessKeyId']
+                    )
+                    
+                    last_used_date = last_used_response['AccessKeyLastUsed'].get('LastUsedDate')
+                    
+                    if last_used_date:
+                        # Time for some date math...
+                        days_since_rotation = (datetime.datetime.utcnow().replace(tzinfo=datetime.timezone.utc) - last_used_date).days
+                        if days_since_rotation > 90:
+                            results.append({
+                                "service": "IAM",
+                                "resource": username,
+                                "status": "CRITICAL",
+                                "issue": f"Access key has not been rotated in over 90 days."
+                            })
+                        else:
+                             results.append({
+                                "service": "IAM",
+                                "resource": username,
+                                "status": "OK",
+                                "issue": f"Access key was last used {days_since_rotation} days ago."
+                            })
+                    else:
+                        # Never used? That's fine I guess.
+                        results.append({
+                                "service": "IAM",
+                                "resource": username,
+                                "status": "OK",
+                                "issue": "Access key has never been used."
+                        })
+    except Exception as e:
+        results.append({
+            "service": "IAM",
+            "error": "An error occurred during IAM scanning.",
+            "details": str(e),
+            "remediation": "Please check your AWS credentials and IAM permissions."
+        })
+    
+    return results
+
 def run_all_scans():
     """
     The big boss function. Tells all the other scanners to get to work.
@@ -172,6 +231,7 @@ def run_all_scans():
     all_results.extend(scan_s3_buckets())
     all_results.extend(scan_rds_encryption())
     all_results.extend(scan_ec2_public_access())
+    all_results.extend(scan_iam_users()) # The new guy.
     return all_results
 
 # If we run this file directly, just print the results to the screen. Good for testing.
@@ -179,44 +239,3 @@ if __name__ == '__main__':
     scan_results = run_all_scans()
     for result in scan_results:
         print(result)
-        # get all buckets in the account
-        buckets = s3.list_buckets().get('Buckets', [])
-
-        for bucket in buckets:
-            bucket_name = bucket['Name']
-            is_public = False # assume it's private
-
-            try:
-                # check public access block settings first
-                pab = s3.get_public_access_block(Bucket=bucket_name)['PublicAccessBlockConfiguration']
-                if not (pab['BlockPublicAcls'] and pab['IgnorePublicAcls'] and
-                        pab['BlockPublicPolicy'] and pab['RestrictPublicBuckets']):
-                    is_public = True
-            except:
-                # if no pab, check the policy
-                try:
-                    policy = s3.get_bucket_policy(Bucket=bucket_name)
-                    # simple check for public policy
-                    if '"Principal":"*"' in policy['Policy'] or '"Principal":{"AWS":"*"}' in policy['Policy']:
-                        is_public = True
-                except:
-                    # no policy found, so it's not public
-                    pass
-
-            if is_public:
-                results.append({"bucket": bucket_name, "status": "CRITICAL", "issue": "Might be public."})
-            else:
-                results.append({"bucket": bucket_name, "status": "OK", "issue": "Looks private."})
-
-    except Exception as e:
-        results.append({"error": "Scan failed", "details": str(e), "fix": "Check AWS creds or permissions."})
-
-    return results
-
-# to test this file directly
-if __name__ == '__main__':
-    scan_results = scan_s3_buckets()
-    # just print the results
-    for r in scan_results:
-        print(r)
-
