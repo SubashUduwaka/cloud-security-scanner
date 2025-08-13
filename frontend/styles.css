@@ -1,4 +1,3 @@
-/* --- Basic Setup --- */
 body {
     font-family: Arial, sans-serif;
     background-color: #f4f4f9;
@@ -6,6 +5,13 @@ body {
     line-height: 1.6;
     margin: 0;
     padding: 0;
+}
+
+header, footer {
+    background-color: #2c3e50;
+    color: #ecf0f1;
+    text-align: center;
+    padding: 1rem 0;
 }
 
 main {
@@ -17,14 +23,6 @@ main {
     border-radius: 8px;
 }
 
-header, footer {
-    background-color: #2c3e50;
-    color: #ecf0f1;
-    text-align: center;
-    padding: 1rem 0;
-}
-
-/* --- Controls & Status --- */
 .controls {
     text-align: center;
     margin-bottom: 2rem;
@@ -56,7 +54,6 @@ header, footer {
     color: #7f8c8d;
 }
 
-/* --- Results --- */
 .results-container h2 {
     border-bottom: 2px solid #ecf0f1;
     padding-bottom: 0.5rem;

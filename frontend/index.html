@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Cloud Scanner</title>
+    <title>Cloud Security Scanner Dashboard</title>
     <link rel="stylesheet" href="styles.css">
 </head>
 <body>
     <header>
         <h1>Cloud Security Scanner</h1>
-        <p>A simple tool for checking cloud settings.</p>
+        <p>A simple tool to check for common cloud misconfigurations.</p>
     </header>
 
     <main>
@@ -19,15 +19,22 @@
         </div>
         
         <div class="results-container">
-            <h2>Results</h2>
+            <h2>Current Scan Results</h2>
             <div id="resultsList">
-                <p>Click the button to start a scan.</p>
+                <p>Click "Run Scan" to see the latest results.</p>
+            </div>
+        </div>
+
+        <div class="results-container">
+            <h2>Historical Scans</h2>
+            <div id="historyList">
+                <p>Loading historical data...</p>
             </div>
         </div>
     </main>
 
     <footer>
-        <p>&copy; 2025</p>
+        <p>&copy; 2025 Applied Project Team</p>
     </footer>
 
     <script src="app.js"></script>
