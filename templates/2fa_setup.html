@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Set Up 2FA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header>
+        <h1>Set Up Two-Factor Authentication</h1>
+        <a href="{{ url_for('dashboard') }}">Back to Dashboard</a>
+    </header>
+    <main class="auth-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <p class="flash {{ category }}">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="auth-box">
+            <h2>1. Scan QR Code</h2>
+            <p>Scan this QR code with your authenticator app (e.g., Google Authenticator).</p>
+            <img src="data:image/png;base64,{{ qr_code }}" alt="2FA QR Code">
+            
+            <h2 style="margin-top: 2rem;">2. Verify Code</h2>
+            <p>Enter the 6-digit code from your app to enable 2FA.</p>
+            <form method="post" action="{{ url_for('enable_2fa') }}">
+                <input type="text" name="otp_code" placeholder="6-digit code" required autocomplete="off" minlength="6" maxlength="6">
+                <button type="submit">Verify & Enable</button>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

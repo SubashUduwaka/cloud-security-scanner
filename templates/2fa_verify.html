@@ -1,0 +1,28 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Verify 2FA</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body>
+    <header><h1>Two-Factor Authentication</h1></header>
+    <main class="auth-container">
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <p class="flash {{ category }}">{{ message }}</p>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+        <div class="auth-box">
+            <h2>Enter Verification Code</h2>
+            <p>Please enter the code from your authenticator app to complete your login.</p>
+            <form method="post" action="{{ url_for('verify_2fa_login') }}">
+                <input type="text" name="otp_code" placeholder="6-digit code" required autocomplete="off" minlength="6" maxlength="6">
+                <button type="submit">Verify</button>
+            </form>
+        </div>
+    </main>
+</body>
+</html>

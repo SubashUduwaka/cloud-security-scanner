@@ -1,0 +1,118 @@
+/* --- General & Body --- */
+body {
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, Cantarell, 'Open Sans', 'Helvetica Neue', sans-serif;
+    background-color: #f4f7f6;
+    color: #333;
+    margin: 0;
+    line-height: 1.6;
+}
+header {
+    background: #fff;
+    padding: 1rem 2rem;
+    border-bottom: 1px solid #ddd;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+header h1 { margin: 0; color: #2c3e50; }
+main { padding: 2rem; max-width: 1200px; margin: auto; }
+
+/* --- Welcome Page --- */
+.welcome-body {
+    background: linear-gradient(-45deg, #2c3e50, #3498db, #2980b9, #2c3e50);
+    background-size: 400% 400%;
+    animation: gradientBG 15s ease infinite;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    height: 100vh;
+    color: white;
+}
+@keyframes gradientBG {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+}
+.welcome-container { text-align: center; }
+.welcome-box {
+    background: rgba(0, 0, 0, 0.2);
+    padding: 3rem 4rem;
+    border-radius: 15px;
+    backdrop-filter: blur(10px);
+    border: 1px solid rgba(255, 255, 255, 0.1);
+}
+.welcome-box h1 { font-size: 3em; margin-bottom: 0.5rem; }
+.welcome-box p { font-size: 1.2em; max-width: 500px; margin-bottom: 2rem; }
+.welcome-actions { display: flex; gap: 1rem; justify-content: center; }
+
+/* --- Auth Page --- */
+.auth-body { background-color: #eaf2f8; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+.auth-container {
+    background: #fff;
+    padding: 2rem;
+    border-radius: 8px;
+    box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+    width: 100%;
+    max-width: 400px;
+}
+.auth-toggle { display: flex; border-bottom: 1px solid #ddd; margin-bottom: 1.5rem; }
+.auth-toggle a { flex: 1; text-align: center; padding: 0.8rem; text-decoration: none; color: #888; font-weight: 500; border-bottom: 3px solid transparent; transition: all 0.3s ease; }
+.auth-toggle a.active { color: #3498db; border-bottom-color: #3498db; }
+.auth-form h2 { text-align: center; margin-bottom: 1.5rem; color: #333; }
+.auth-form input { width: 100%; padding: 0.8rem; margin-bottom: 1rem; border: 1px solid #ccc; border-radius: 4px; box-sizing: border-box; }
+.auth-form .eula-container { display: flex; align-items: center; margin-bottom: 1rem; font-size: 0.9em; }
+.auth-form .eula-container input { width: auto; margin-right: 0.5rem; }
+.auth-form .eula-container a { color: #3498db; text-decoration: none; }
+
+/* --- Buttons --- */
+.button { padding: 0.8rem 1.8rem; border-radius: 5px; text-decoration: none; font-weight: 500; transition: all 0.3s ease; }
+.button-primary { background-color: #3498db; color: white; }
+.button-primary:hover { background-color: #2980b9; }
+.button-secondary { background-color: rgba(255, 255, 255, 0.9); color: #333; }
+.button-secondary:hover { background-color: white; }
+.auth-form button { width: 100%; padding: 0.9rem; border: none; border-radius: 4px; background-color: #3498db; color: white; font-size: 1em; cursor: pointer; transition: background-color 0.3s; }
+.auth-form button:hover { background-color: #2980b9; }
+
+/* --- Flash Messages --- */
+.flash-messages, .flash-messages-auth { width: 100%; margin-bottom: 1rem; }
+.flash { padding: 1rem; border-radius: 4px; text-align: center; }
+.flash.success { background-color: #d4edda; color: #155724; }
+.flash.error { background-color: #f8d7da; color: #721c24; }
+.flash.info { background-color: #cce5ff; color: #004085; }
+
+/* --- Dashboard --- */
+.header-controls { display: flex; align-items: center; gap: 1.5rem; }
+.settings-dropdown { position: relative; display: inline-block; }
+.settings-button { background: none; border: none; font-size: 1em; cursor: pointer; color: #555; }
+.dropdown-content { display: none; position: absolute; right: 0; background-color: #f9f9f9; min-width: 160px; box-shadow: 0px 8px 16px 0px rgba(0,0,0,0.2); z-index: 1; border-radius: 5px; }
+.dropdown-content a { color: black; padding: 12px 16px; text-decoration: none; display: block; }
+.dropdown-content a:hover { background-color: #f1f1f1; }
+.settings-dropdown:hover .dropdown-content { display: block; }
+
+.dashboard-grid { display: grid; grid-template-columns: 2fr 1fr; gap: 2rem; margin-bottom: 2rem; align-items: start; }
+.dashboard-chart { background: #fff; padding: 1.5rem; border-radius: 8px; box-shadow: 0 4px 6px rgba(0,0,0,0.05); min-height: 350px; position: relative; }
+.dashboard-chart canvas { max-height: 350px; }
+.metrics-summary { display: flex; flex-direction: column; gap: 2rem; }
+.metric { background: #fff; padding: 1.5rem; border-radius: 8px; text-align: center; box-shadow: 0 4px 6px rgba(0,0,0,0.05); }
+.metric-value { font-size: 2.5em; font-weight: bold; color: #3498db; display: block; }
+.metric-label { color: #555; }
+.controls { background: #fff; padding: 1.5rem; border-radius: 8px; margin-bottom: 2rem; display: flex; align-items: center; gap: 1rem; }
+.controls button, .button-danger { padding: 0.7rem 1.5rem; border: none; border-radius: 4px; font-size: 1em; cursor: pointer; transition: background-color 0.3s; color: white; }
+.controls .button { background-color: #3498db; }
+.controls .button:hover { background-color: #2980b9; }
+.button-danger { background-color: #e74c3c; }
+.button-danger:hover { background-color: #c0392b; }
+.results-container { background: #fff; padding: 1.5rem; border-radius: 8px; margin-top: 2rem; }
+.result-item { padding: 1rem; border: 1px solid #eee; border-left-width: 5px; border-radius: 4px; margin-bottom: 1rem; }
+.result-item.ok { border-left-color: #2ecc71; }
+.result-item.critical { border-left-color: #e74c3c; }
+.result-item.error { border-left-color: #f39c12; }
+.status-CRITICAL { color: #e74c3c; font-weight: bold; }
+.status-OK { color: #27ae60; }
+.status-ERROR { color: #f39c12; font-weight: bold; }
+.charts-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 2rem; margin-bottom: 2rem; }
+.last-scanned { margin-left: auto; font-size: 0.9em; color: #555; }
+
+@media (max-width: 900px) {
+    .dashboard-grid, .charts-grid { grid-template-columns: 1fr; }
+}

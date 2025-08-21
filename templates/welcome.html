@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Cloud Security Scanner</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+</head>
+<body class="welcome-body">
+    <div class="welcome-container">
+        <div class="welcome-box">
+            <h1>Cloud Security Scanner</h1>
+            <p>Your first line of defense in the cloud. Identify misconfigurations before they become breaches.</p>
+            <div class="welcome-actions">
+                <a href="{{ url_for('auth', _anchor='login') }}" class="button button-primary">Login</a>
+                <a href="{{ url_for('auth', _anchor='register') }}" class="button button-secondary">Register</a>
+            </div>
+        </div>
+    </div>
+</body>
+</html>

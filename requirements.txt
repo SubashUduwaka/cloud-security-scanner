@@ -1,5 +1,15 @@
-boto3
 Flask
 Flask-SQLAlchemy
 Flask-Migrate
 Flask-Cors
+Flask-Login
+Flask-Bcrypt
+boto3
+pyotp
+qrcode
+Pillow
+WeasyPrint
+APScheduler
+Flask-Mail
+pyinstaller
+waitress

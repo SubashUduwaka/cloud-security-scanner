@@ -1,0 +1,23 @@
+# Python virtual environment
+venv/
+
+# Instance-specific files and database
+instance/
+*.db
+*.db-journal
+
+# Environment variables - VERY IMPORTANT
+.env
+
+# PyInstaller build artifacts
+build/
+dist/
+*.spec
+
+# Python cache
+__pycache__/
+*.pyc
+
+# IDE specific files
+.idea/
+.vscode/

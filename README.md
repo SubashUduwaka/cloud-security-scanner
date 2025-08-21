@@ -1,60 +1,81 @@
-# Cloud Security Scanner v0.5-alpha
+# Aegis Cloud Security Scanner
 
-This version expands the scanner's capabilities to include IAM checks and introduces a visual dashboard to summarize the security posture.
+Aegis is a self-hosted, web-based tool designed to continuously scan your AWS environment for security misconfigurations. It provides a user-friendly dashboard, historical trend analysis, and automated reporting to help you maintain a strong security posture.
 
 ## Features
 
-- **IAM Access Key Scanner**: A new module that checks for IAM user access keys that have not been rotated in over 90 days.
+- **Comprehensive Scanning**: Checks for dozens of common misconfigurations across services like S3, IAM, EC2, RDS, CloudTrail, and more.
 
-- **Dashboard Chart**: The frontend now includes a doughnut chart powered by Chart.js to provide a quick visual summary of "OK" vs. "CRITICAL" findings.
+- **Multi-User & Secure**: Full user authentication with mandatory 2FA and encrypted storage for AWS credentials.
 
-- **Decoupled Frontend:** A simple, clean user interface built with HTML, CSS, and vanilla JavaScript.
+- **Interactive Dashboard**: Visualize your security posture with charts for historical trends and breakdowns by service.
 
-- **SQLite Database Integration:** The backend uses `Flask-SQLAlchemy` to save every scan result to a persistent `app.db` file.
+- **Automated Reporting**: Schedule weekly or monthly scans and receive email alerts for new critical findings.
 
-- **Historical Scans API Endpoint:** A new endpoint, `/api/v1/history`, has been created to serve all past scan results from the database.
+- **High-Performance Engine**: Scans run in parallel to deliver results quickly, with live progress updates streamed to the UI.
 
-## How to Use
+## Setup & Installation
 
-This version requires running two components: the backend server and the frontend page.
+### Prerequisites
 
-### 1. Set Up the Backend
+- Python 3.8+
 
-1. Navigate to the project's root directory.
+- An AWS account with credentials (`SecurityAudit` and `ReadOnlyAccess` policies recommended).
 
-2. Install the required libraries:
-   
-   ```
-   pip install -r requirements.txt
-   ```
+- A Gmail account (or other SMTP server) for sending email notifications.
 
-3. Initialize the Database (First-Time Setup Only)
-   
-   You need to create the database and its tables. These commands use Flask-Migrate to set up your app.db file.
-   
-   ```
-   # Creates the migrations folder (only run this once per project)
-   flask db init
-   
-   # Generates the initial migration script
-   flask db migrate -m "Initial migration."
-   
-   # Applies the migration to create the database tables
-   flask db upgrade
-   ```
+### 1. Clone the Repository
 
-4. Start the Flask web server:
-   
-   ```
-   python app.py
-   ```
+Clone this repository to your local machine.
 
-5. The API server will be running on `http://127.0.0.1:5000`.
+### 2. Install Dependencies
 
-### 2. Run the Frontend
+Install all required Python libraries:
 
-1. Navigate to the `frontend` folder.
+```
+pip install -r requirements.txt
+```
 
-2. Open the `index.html` file directly in your web browser (e.g., by double-clicking it).
+### 3. Configure Environment Variables
 
-3. Click the "Run Scan" button to see the results.
+Create a file named `.env` in the root of the project folder and add your email configuration:
+
+```
+MAIL_USERNAME=your-email@gmail.com
+MAIL_PASSWORD=your-gmail-app-password
+```
+
+**Note:** For Gmail, you must use an "App Password," not your regular account password.
+
+### 4. Initialize the Database
+
+Run the following commands to set up your local SQLite database:
+
+```
+# Creates the migrations folder (only run this once per project)
+flask db init
+
+# Generates the initial migration script
+flask db migrate -m "Initial migration."
+
+# Applies the migration to create the database tables
+flask db upgrade
+```
+
+### 5. Create an Admin User
+
+You must create at least one admin user to manage the application. Run this command and replace `your_username` with the username you registered with in the app.
+
+```
+flask make-admin your_username
+```
+
+### 6. Run the Application
+
+Start the server with this command:
+
+```
+python app.py
+```
+
+The application will be available at `http://127.0.0.1:5000`.
