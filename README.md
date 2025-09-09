@@ -1,6 +1,6 @@
 # Aegis Cloud Scanner
 
-					![Aegis Logo Animation](https://i.imgur.com/947ARvo.gif)
+![Aegis Logo Animation](https://i.imgur.com/947ARvo.gif)
 
 Aegis is a web-based cloud security posture management (CSPM) tool designed to scan **AWS** and **GCP** environments for common security misconfigurations. It provides a user-friendly dashboard to run scans, visualize security posture, manage credentials securely, and review historical scan data.
 
