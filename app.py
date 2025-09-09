@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 import sys
 import os
 import logging
@@ -61,18 +60,15 @@ from flask import Flask, jsonify, request, redirect, url_for, render_template, f
 from flask_cors import CORS
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func, or_
-=======
 from flask import Flask, jsonify, request, redirect, url_for, render_template, flash, session, Response
 from flask_cors import CORS
 from s3_scanner import run_all_scans
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import func
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
 from flask_migrate import Migrate
 from flask_login import LoginManager, UserMixin, login_user, login_required, logout_user, current_user
 from flask_bcrypt import Bcrypt
 from flask_mail import Mail, Message
-<<<<<<< HEAD
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
 import datetime
@@ -83,18 +79,15 @@ from flask_wtf.csrf import CSRFProtect, generate_csrf, CSRFError
 from flask_talisman import Talisman
 import boto3
 from cryptography.fernet import Fernet
-=======
 import os
 import datetime
 import boto3
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
 import pyotp
 import qrcode
 from io import BytesIO
 import base64
 import re
 from weasyprint import HTML
-<<<<<<< HEAD
 from waitress import serve
 from itsdangerous import URLSafeTimedSerializer
 import parallel_scanner
@@ -198,7 +191,6 @@ def decrypt_data(encrypted_data, context="generic data"):
         logging.info(f"--- [SECURITY] Decrypting {context}. ---")
         return fernet.decrypt(encrypted_data.encode()).decode()
     raise ValueError("Encryption key not configured.")
-=======
 from apscheduler.schedulers.background import BackgroundScheduler
 from waitress import serve
 
@@ -233,13 +225,11 @@ login_manager.login_view = 'auth'
 login_manager.login_message_category = "info"
 mail = Mail(app)
 CORS(app)
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
 
 # --- Database Models ---
 class User(db.Model, UserMixin):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(64), unique=True, index=True)
-<<<<<<< HEAD
     email = db.Column(db.String(120), unique=True, index=True)
     password_hash = db.Column(db.String(128))
     failed_login_attempts = db.Column(db.Integer, default=0)
@@ -268,8 +258,6 @@ class CloudCredential(db.Model):
     provider = db.Column(db.String(20), nullable=False, index=True)
     encrypted_key_1 = db.Column(db.String(512), nullable=True)
     encrypted_key_2 = db.Column(db.Text, nullable=True)
-
-=======
     password_hash = db.Column(db.String(128))
     otp_secret = db.Column(db.String(32))
     is_2fa_enabled = db.Column(db.Boolean, default=False)
@@ -277,14 +265,12 @@ class CloudCredential(db.Model):
     def set_password(self, password): self.password_hash = bcrypt.generate_password_hash(password).decode('utf-8')
     def check_password(self, password): return bcrypt.check_password_hash(self.password_hash, password)
 
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
 class ScanResult(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     service = db.Column(db.String(64), index=True)
     resource = db.Column(db.String(128))
     status = db.Column(db.String(64))
     issue = db.Column(db.String(256))
-<<<<<<< HEAD
     remediation = db.Column(db.String(512), nullable=True)
     doc_url = db.Column(db.String(256), nullable=True)
     timestamp = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(datetime.timezone.utc))
@@ -367,10 +353,8 @@ def before_request():
                 logout_user()
                 flash('Your session has expired due to inactivity. Please log in again.', 'info')
         session['last_activity'] = datetime.datetime.now(datetime.timezone.utc).isoformat()
-=======
     timestamp = db.Column(db.DateTime, index=True, default=lambda: datetime.datetime.now(datetime.timezone.utc))
     user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=True)
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
 
 @login_manager.user_loader
 def load_user(user_id):
@@ -450,7 +434,6 @@ def splash():
 def welcome():
     if current_user.is_authenticated:
         return redirect(url_for('dashboard'))
-=======
     if len(password) < 8: return False, "Password must be at least 8 characters long."
     if not re.search(r"[a-z]", password): return False, "Password must contain a lowercase letter."
     if not re.search(r"[A-Z]", password): return False, "Password must contain an uppercase letter."
@@ -507,7 +490,6 @@ CACHE_EXPIRY_SECONDS = 60
 @app.route('/')
 def welcome():
     if current_user.is_authenticated: return redirect(url_for('dashboard'))
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
     return render_template('welcome.html')
 
 @app.route('/auth')
@@ -516,7 +498,6 @@ def auth():
     return render_template('auth.html')
 
 @app.route('/login', methods=['POST'])
-<<<<<<< HEAD
 @limiter.limit("10 per minute")
 def login_post():
     login_identifier = request.form.get('username')
@@ -553,7 +534,7 @@ def login_post():
             db.session.commit()
         else:
             logging.warning(f"--- [AUTH] Failed login attempt for non-existent user '{login_identifier}'. ---")
-=======
+
 def login_post():
     user = User.query.filter_by(username=request.form.get('username')).first()
     if user and user.check_password(request.form.get('password')):
@@ -565,12 +546,10 @@ def login_post():
             flash('Login successful!', 'success')
             return redirect(url_for('dashboard'))
     else:
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
         flash('Invalid username or password.', 'error')
         return redirect(url_for('auth', _anchor='login'))
 
 @app.route('/register', methods=['POST'])
-<<<<<<< HEAD
 @limiter.limit("10 per hour")
 def register_post():
     username = request.form.get('username')
@@ -580,13 +559,12 @@ def register_post():
     eula_accepted = request.form.get('eula')
     admin_key = request.form.get('admin_key')
     
-=======
+
 def register_post():
     username = request.form.get('username')
     password = request.form.get('password')
     confirm_password = request.form.get('confirm_password')
     eula_accepted = request.form.get('eula')
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
     if not eula_accepted:
         flash('You must accept the EULA to register.', 'error')
         return redirect(url_for('auth', _anchor='register'))
@@ -600,7 +578,6 @@ def register_post():
     if User.query.filter_by(username=username).first():
         flash('Username already exists. Please choose another.', 'error')
         return redirect(url_for('auth', _anchor='register'))
-<<<<<<< HEAD
     if User.query.filter_by(email=email).first():
         flash('Email address is already registered.', 'error')
         return redirect(url_for('auth', _anchor='register'))
@@ -664,14 +641,12 @@ def resend_verification():
     send_verification_email(current_user)
     flash('A new verification email has been sent.', 'info')
     return redirect(url_for('unverified'))
-=======
     user = User(username=username)
     user.set_password(password)
     db.session.add(user)
     db.session.commit()
     login_user(user)
     return redirect(url_for('setup_2fa_prompt'))
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
 
 @app.route('/eula')
 def eula():
@@ -680,15 +655,11 @@ def eula():
 @app.route('/logout')
 @login_required
 def logout():
-<<<<<<< HEAD
     session.pop('2fa_passed', None)
-=======
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
     logout_user()
     flash('You have been logged out.', 'success')
     return redirect(url_for('welcome'))
 
-<<<<<<< HEAD
 @app.route('/help')
 def help_page():
     return render_template('help.html')
@@ -751,7 +722,6 @@ def reset_with_token(token):
 @app.route('/setup-2fa')
 @login_required
 @check_verified
-=======
 @app.route('/setup-2fa-prompt')
 @login_required
 def setup_2fa_prompt():
@@ -759,19 +729,15 @@ def setup_2fa_prompt():
 
 @app.route('/setup-2fa')
 @login_required
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
 def setup_2fa():
     if current_user.is_2fa_enabled:
         flash('2FA is already enabled.', 'info')
         return redirect(url_for('dashboard'))
     current_user.otp_secret = pyotp.random_base32()
     db.session.commit()
-<<<<<<< HEAD
     uri = pyotp.totp.TOTP(current_user.otp_secret).provisioning_uri(name=current_user.username, issuer_name="Aegis Cloud Scanner")
     logging.info(f"--- [SECURITY] Generated new 2FA QR Code for user '{current_user.username}'. ---")
-=======
     uri = pyotp.totp.TOTP(current_user.otp_secret).provisioning_uri(name=current_user.username, issuer_name="Cloud-Security-Scanner")
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
     img = qrcode.make(uri)
     buf = BytesIO()
     img.save(buf)
@@ -780,28 +746,22 @@ def setup_2fa():
 
 @app.route('/enable-2fa', methods=['POST'])
 @login_required
-<<<<<<< HEAD
 @check_verified
-=======
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
 def enable_2fa():
     otp_code = request.form.get('otp_code')
     totp = pyotp.TOTP(current_user.otp_secret)
     if totp.verify(otp_code, valid_window=1):
         current_user.is_2fa_enabled = True
         db.session.commit()
-<<<<<<< HEAD
         logging.info(f"--- [SECURITY] 2FA successfully enabled for user '{current_user.username}'. ---")
         flash('2FA has been successfully enabled! Welcome to the dashboard.', 'success')
         session['2fa_passed'] = True
         return redirect(url_for('dashboard'))
     else:
         logging.warning(f"--- [SECURITY] Invalid 2FA code provided for user '{current_user.username}'. ---")
-=======
         flash('2FA has been successfully enabled!', 'success')
         return redirect(url_for('dashboard'))
     else:
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
         flash('Invalid verification code. Please try again.', 'error')
         return redirect(url_for('setup_2fa'))
 
@@ -814,21 +774,16 @@ def verify_2fa_login():
         otp_code = request.form.get('otp_code')
         totp = pyotp.TOTP(user.otp_secret)
         if totp.verify(otp_code, valid_window=1):
-<<<<<<< HEAD
             logging.info(f"--- [SECURITY] 2FA verification successful for user '{user.username}'. ---")
             login_user(user)
             session.pop('username_for_2fa', None)
             session['2fa_passed'] = True
-=======
             login_user(user)
             session.pop('username_for_2fa', None)
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
             flash('Login successful!', 'success')
             return redirect(url_for('dashboard'))
         else:
             flash('Invalid 2FA code.', 'error')
-<<<<<<< HEAD
-
     resp = make_response(render_template('2fa_verify.html'))
     resp.headers['Cache-Control'] = 'no-cache, no-store, must-revalidate'
     resp.headers['Pragma'] = 'no-cache'
@@ -878,7 +833,6 @@ def dashboard():
 @check_2fa
 @limiter.limit("5 per hour", key_func=lambda: current_user.id)
 def scan():
-    # --- THIS IS THE NEW TOP-LEVEL ERROR TRAP ---
     try:
         profile_id = request.args.get('profile_id')
         regions_to_scan = request.args.getlist('regions')
@@ -982,7 +936,6 @@ def scan():
             return jsonify({"results": final_results})
 
     except Exception as e:
-        # This will catch any unhandled exception during the scan process
         logging.critical(f"--- [FATAL SCAN ERROR] An unexpected error occurred in the main scan route. ---", exc_info=True)
         return jsonify({"error": f"A fatal server error occurred: {str(e)}"}), 500
 
@@ -1074,17 +1027,13 @@ def history_trends():
         ScanResult.timestamp >= thirty_days_ago,
         (ScanResult.user_id == current_user.id) | (ScanResult.user_id == None)
     ).group_by('scan_date').order_by('scan_date').all()
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
     labels = [datetime.datetime.strptime(row.scan_date, '%Y-%m-%d').strftime('%b %d') for row in trend_data]
     data = [row.critical_count for row in trend_data]
     return jsonify({"labels": labels, "data": data})
 
 @app.route('/api/v1/delete_history', methods=['POST'])
 @login_required
-<<<<<<< HEAD
 @check_2fa
-=======
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
 def delete_history():
     try:
         num_deleted = ScanResult.query.filter_by(author=current_user).delete()
@@ -1096,7 +1045,6 @@ def delete_history():
 
 @app.route('/report/pdf')
 @login_required
-<<<<<<< HEAD
 @check_verified
 @check_2fa
 def generate_pdf_report():
@@ -1478,4 +1426,3 @@ if __name__ == '__main__':
     
     print("Scheduler started. Server running on http://127.0.0.1:5000")
     serve(app, host='0.0.0.0', port=5000)
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
