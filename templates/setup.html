@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initial Setup - Aegis Cloud Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+        }
+        .setup-wrapper {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+        .setup-card {
+            display: flex;
+            width: 100%;
+            max-width: 1000px;
+            min-height: 700px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        .brand-pane {
+            width: 40%;
+            background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+            color: white;
+            padding: 3rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .brand-pane h2 {
+            color: white;
+            margin-top: 1.5rem;
+        }
+        .brand-pane p {
+            color: var(--medium-grey);
+        }
+        .form-pane {
+            width: 60%;
+            padding: 3rem;
+            background: var(--card-bg);
+            overflow-y: auto;
+        }
+        .form-pane h3 {
+            color: var(--dark-grey);
+            margin-top: 0;
+        }
+        .form-section { margin-bottom: 2rem; }
+        .form-section h4 { color: var(--primary-color); }
+        .form-control { width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); background-color: var(--card-bg); color: var(--dark-grey); box-sizing: border-box; }
+        .form-group-vertical { display: flex; flex-direction: column; gap: 0.5rem; }
+        .animated-logo-container { height: 120px; width: 120px; margin: 0 auto 1.5rem auto; }
+        .animated-logo { width: 100%; height: 100%; }
+        .logo-shield-bg { fill: rgba(255, 255, 255, 0.1); }
+        .logo-shield-fg { fill: none; stroke: #00A896; stroke-width: 4; stroke-dasharray: 400; stroke-dashoffset: 400; animation: draw-shield 2s ease-in-out forwards; }
+        .logo-check { fill: none; stroke: #4CAF50; stroke-width: 6; stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw-check 1s ease-in-out 1.5s forwards; }
+        @keyframes draw-shield { to { stroke-dashoffset: 0; } }
+        @keyframes draw-check { to { stroke-dashoffset: 0; } }
+
+        @media (max-width: 900px) {
+            .setup-card { flex-direction: column; min-height: auto; }
+            .brand-pane, .form-pane { width: 100%; box-sizing: border-box; }
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-wrapper">
+        <div class="setup-card">
+            <div class="brand-pane">
+                 <div class="animated-logo-container">
+                    <svg class="animated-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <path class="logo-shield-bg" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z"/>
+                        <path class="logo-shield-fg" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z"/>
+                        <polyline class="logo-check" points="30,55 45,70 70,40"/>
+                    </svg>
+                </div>
+                <h2>Welcome to Aegis</h2>
+                <p>Let's get your shield configured. Complete the steps on the right to secure your application.</p>
+            </div>
+            <div class="form-pane">
+                <h3><i class="fas fa-cogs"></i> Application Configuration</h3>
+                 <form method="POST" action="/setup">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                    
+                    <div class="form-section">
+                        <h4>Security Keys</h4>
+                        <div class="form-group-vertical">
+                            <label for="secret_key">Secret Key</label>
+                            <input type="text" name="secret_key" id="secret_key" class="form-control" value="{{ suggested_secret }}" required>
+                            <label for="encryption_key" style="margin-top:1rem;">Encryption Key</label>
+                            <input type="text" name="encryption_key" id="encryption_key" class="form-control" value="{{ suggested_encryption_key }}" required>
+                        </div>
+                    </div>
+                     <div class="form-section">
+                        <h4>Email Configuration</h4>
+                        <div class="form-group-vertical">
+                            <label for="mail_username">Gmail Address</label>
+                            <input type="email" name="mail_username" id="mail_username" class="form-control" placeholder="your-email@gmail.com" required>
+                            <label for="mail_password" style="margin-top:1rem;">Gmail App Password</label>
+                            <input type="password" name="mail_password" id="mail_password" class="form-control" placeholder="16-character app password" required>
+                             <button type="button" id="testEmailBtn" class="button-secondary" style="margin-top: 1rem;"><i class="fas fa-paper-plane"></i> Test Settings</button>
+                        </div>
+                    </div>
+                     <div class="form-section">
+                        <h4>Admin Account</h4>
+                        <div class="form-group-vertical">
+                            <label for="admin_key">Admin Registration Key</label>
+                            <input type="text" name="admin_key" id="admin_key" class="form-control" placeholder="Create a secret key for admin registration" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="button" style="width: 100%; padding: 0.8rem; font-size: 1.1em;"><i class="fas fa-save"></i> Save & Finish</button>
+                </form>
+            </div>
+        </div>
+    </div>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script>
+    document.getElementById('testEmailBtn').addEventListener('click', async () => {
+        const email = document.getElementById('mail_username').value;
+        const password = document.getElementById('mail_password').value;
+        const button = document.getElementById('testEmailBtn');
+        const originalText = button.innerHTML;
+        if (!email || !password) {
+            Toastify({ text: "Please enter both email and password.", duration: 3000, gravity: "bottom", style: { background: "linear-gradient(to right, #D0021B, #e74c3c)" } }).showToast();
+            return;
+        }
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        try {
+            const response = await fetch('/test_email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, password: password }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                Toastify({ text: data.message, duration: 4000, gravity: "bottom", style: { background: "linear-gradient(to right, #2ECC71, #27ae60)" } }).showToast();
+            } else { throw new Error(data.error || 'Unknown error'); }
+        } catch (error) {
+            Toastify({ text: `Test failed: ${error.message}`, duration: 5000, gravity: "bottom", style: { background: "linear-gradient(to right, #D0021B, #e74c3c)" } }).showToast();
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    });
+</script>
+</body>
+</html>

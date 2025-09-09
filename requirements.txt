@@ -9,7 +9,27 @@ pyotp
 qrcode
 Pillow
 WeasyPrint
+<<<<<<< HEAD
+Flask-Mail
+Flask-Limiter
+Flask-Talisman
+python-dotenv
+pyinstaller
+Flask-WTF 
+zxcvbn
+cryptography
+waitress
+google-cloud-storage
+google-api-python-client
+google-cloud-resource-manager
+google-cloud-compute
+google-cloud-kms
+opentelemetry-api
+cx_Freeze
+opentelemetry-instrumentation
+=======
 APScheduler
 Flask-Mail
 pyinstaller
 waitress
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1

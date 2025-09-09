@@ -1,0 +1,11 @@
+{% extends "layout.html" %}
+{% block title %}Get Started - Aegis{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px; margin: auto; text-align: center;" data-aos="fade-up">
+    <h2><i class="fas fa-hand-sparkles"></i> Welcome to Aegis!</h2>
+    <p>To begin, you need to add your cloud credentials. This allows the scanner to securely audit your AWS or GCP environment for misconfigurations.</p>
+    <p style="margin-top: 1rem;">Click the button below to add your first credential profile on the settings page.</p>
+    <a href="{{ url_for('settings') }}" class="button" style="margin-top: 2rem;"><i class="fas fa-plus-circle"></i> Add Cloud Credentials</a>
+</div>
+{% endblock %}

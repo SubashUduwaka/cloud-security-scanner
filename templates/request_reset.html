@@ -1,0 +1,16 @@
+{% extends "layout.html" %}
+{% block title %}Request Password Reset{% endblock %}
+{% block content %}
+<script>document.body.classList.add('auth-body-override');</script>
+<div class="auth-container">
+    <form class="auth-form" method="POST" action="">
+        <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+        <h2>Reset Password</h2>
+        <p style="text-align: center; margin-bottom: 1.5rem;">Enter your username or email, and we'll send a password reset link to the associated email address.</p>
+        
+        <input type="text" name="login_identifier" placeholder="Username or Email" required>
+        
+        <button type="submit">Send Reset Link</button>
+    </form>
+</div>
+{% endblock %}

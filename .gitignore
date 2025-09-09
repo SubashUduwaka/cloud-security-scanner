@@ -1,3 +1,48 @@
+<<<<<<< HEAD
+# Python
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+venv/
+pip-log.txt
+pip-delete-this-directory.txt
+.tox/
+.coverage
+.coverage.*
+.cache
+nosetests.xml
+coverage.xml
+*.cover
+
+# Log files
+*.log
+
+# Database
+app.db
+migrations/
+
+# Environment & Secrets
+.env
+*.env
+temp_gcp_key.json
+
+# Build artifacts
+/build/
+/dist/
+*.spec
+AegisScanner.egg-info/
+
+# User Data
+.first_run
+
+# IDE specific
+.idea/
+.vscode/
+*.swp
+=======
 # Python virtual environment
 venv/
 
@@ -21,3 +66,4 @@ __pycache__/
 # IDE specific files
 .idea/
 .vscode/
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1

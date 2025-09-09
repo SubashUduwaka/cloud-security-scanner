@@ -1,0 +1,50 @@
+{% extends "layout.html" %}
+{% block title %}Help & FAQ - Aegis{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: auto;" data-aos="fade-up">
+    <h2><i class="fas fa-question-circle"></i> Help & FAQ</h2>
+    <p>Find answers to common questions and understand how Aegis Cloud Scanner works.</p>
+
+    <div class="settings-section">
+        <h3>How It Works: Trust & Transparency</h3>
+        <h4>How does Aegis scan my AWS account?</h4>
+        <p>Aegis uses the official AWS SDK, Boto3, to connect to your AWS account with the credentials you provide. It makes **read-only** API calls to check for common misconfigurations across various services like S3, IAM, and EC2. **Aegis cannot and will not modify any of your AWS resources.** It is a passive scanning tool, designed to provide visibility into potential security issues without performing any destructive actions.</p>
+        
+        <h4>What data is collected and how is it used?</h4>
+        <p>The application collects the following data to provide its core functionality:
+            <ul>
+                <li><strong>AWS Credentials:</strong> Your AWS Access Key ID and Secret Access Key. The Secret Access Key is **immediately encrypted** using a unique, app-specific key and is never stored or transmitted in plaintext.</li>
+                <li><strong>Scan Results:</strong> Details about the findings from your scans (e.g., service, resource name, issue, status). This data is stored locally in your database to power the dashboard and historical trend charts.</li>
+                <li><strong>User Data:</strong> Your username and email for account management. Your password is never stored in plaintext, but rather as a secure hash using `Flask-Bcrypt`.</li>
+                <li><strong>Audit Logs:</strong> Records of user actions, such as logins and password changes, to monitor for suspicious activity.</li>
+            </ul>
+        We do not have access to your AWS data, such as the contents of your S3 buckets or EC2 instance data. Your data remains on your machine and is never shared with us or any third parties.</p>
+
+        <h4>How do you guarantee my data is safe?</h4>
+        <p>Your security is our top priority. We implement the following measures to protect your information:
+            <ul>
+                <li><strong>Strong Encryption:</strong> Your AWS Secret Access Key is encrypted at rest using `cryptography.fernet`, an industry-standard symmetric encryption library.</li>
+                <li><strong>Password Hashing:</strong> User passwords are not stored directly, but as irreversible hashes using `Flask-Bcrypt`, protecting them from breaches.</li>
+                <li><strong>Secure Communication:</strong> All web traffic is secured with HTTPS to prevent man-in-the-middle attacks.</li>
+                <li><strong>Two-Factor Authentication:</strong> We provide mandatory 2FA to prevent unauthorized access to your account.</li>
+            </ul>
+        </p>
+    </div>
+    
+    <div class="settings-section">
+        <h3>General Questions</h3>
+        <h4>What is an AWS misconfiguration?</h4>
+        <p>It's a security flaw in the way an AWS resource is configured. For example, an S3 bucket that is unintentionally publicly accessible, or an IAM user with a weak password policy, can lead to security vulnerabilities.</p>
+        
+        <h4>What AWS permissions do I need to run a scan?</h4>
+        <p>We recommend creating a dedicated IAM user with the following managed policies attached: `SecurityAudit` and `ReadOnlyAccess`. This gives the scanner the necessary permissions to inspect your resources without the ability to modify them.</p>
+    </div>
+
+    <div class="settings-section">
+        <h3><i class="fas fa-envelope"></i> Contact Us</h3>
+        <p>If you need further assistance or have feedback, please reach out to our team via email. We'd love to hear from you!</p>
+        <p><strong>Email:</strong> <a href="mailto:aegis.aws.scanner@gmail.com">aegis.aws.scanner@gmail.com</a></p>
+    </div>
+</div>
+{% endblock %}

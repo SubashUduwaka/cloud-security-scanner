@@ -1,0 +1,67 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initializing Aegis...</title>
+    <meta http-equiv="refresh" content="2.5;url={{ url_for('splash') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background: #0f2027;
+            overflow: hidden;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+        .init-container {
+            text-align: center;
+            opacity: 0;
+            animation: fade-in 0.5s ease forwards;
+        }
+        .gears {
+            font-size: 5rem;
+            color: #00A896;
+            position: relative;
+            display: inline-block;
+            width: 1em;
+            height: 1em;
+        }
+        .gear-one {
+            animation: spin 8s linear infinite;
+        }
+        .gear-two {
+            font-size: 0.5em;
+            position: absolute;
+            top: 0.05em;
+            left: 0.5em;
+            animation: spin-reverse 8s linear infinite;
+        }
+        @keyframes spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+        @keyframes spin-reverse { from { transform: rotate(0deg); } to { transform: rotate(-360deg); } }
+        @keyframes fade-in { to { opacity: 1; } }
+
+        p {
+            margin-top: 1.5rem;
+            font-size: 1.2em;
+            color: var(--medium-grey, #95A5A6);
+        }
+    </style>
+</head>
+<body>
+    <div class="init-container">
+        <div class="gears">
+            <i class="fas fa-cog gear-one"></i>
+            <i class="fas fa-cog gear-two"></i>
+        </div>
+        <p>Initializing Secure Environment...</p>
+    </div>
+</body>
+</html>

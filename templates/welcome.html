@@ -3,6 +3,152 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<<<<<<< HEAD
+    <title>Welcome to Aegis Cloud Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .welcome-body {
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+            background: linear-gradient(315deg, #0f2027, #203a43, #2c5364);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+            box-sizing: border-box;
+        }
+
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        .welcome-container {
+            width: 100%;
+            max-width: 700px;
+            background: rgba(0, 0, 0, 0.2);
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: var(--border-radius);
+            padding: 3rem;
+            text-align: center;
+        }
+        
+        .welcome-header {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            gap: 1rem;
+            margin-bottom: 1rem;
+        }
+        .welcome-header i {
+            font-size: 2.5em;
+            color: var(--primary-color);
+        }
+        .welcome-header h1 {
+            color: white;
+            font-size: 2.5em;
+            margin: 0;
+        }
+        
+        .dynamic-greeting {
+            font-size: 1.5em;
+            color: var(--primary-color);
+            font-weight: 500;
+            margin-top: 0;
+            margin-bottom: 2rem;
+            min-height: 1.5em;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 2rem;
+            margin-top: 2rem;
+        }
+
+        .action-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2rem;
+            border-radius: var(--border-radius);
+            text-decoration: none;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+        }
+        .action-card:hover {
+            background: rgba(255, 255, 255, 0.1);
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+        }
+        .action-card i {
+            font-size: 2.5em;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+        }
+        .action-card h3 {
+            color: white;
+            margin: 0 0 0.5rem 0;
+        }
+        .action-card p {
+            color: var(--medium-grey);
+            margin: 0;
+        }
+
+        @media (max-width: 600px) {
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+        }
+    </style>
+</head>
+<body class="welcome-body">
+    <div class="welcome-container">
+        <div class="welcome-header">
+            <i class="fas fa-shield-alt"></i>
+            <h1>Aegis Cloud Scanner</h1>
+        </div>
+        <p id="dynamic-greeting" class="dynamic-greeting"></p>
+        
+        <div class="action-grid">
+            <a href="{{ url_for('auth', _anchor='login') }}" class="action-card">
+                <i class="fas fa-sign-in-alt"></i>
+                <h3>Login</h3>
+                <p>Access your existing account and dashboard.</p>
+            </a>
+            <a href="{{ url_for('auth', _anchor='register') }}" class="action-card">
+                <i class="fas fa-user-plus"></i>
+                <h3>Register</h3>
+                <p>Create a new account to start scanning.</p>
+            </a>
+        </div>
+    </div>
+
+    <script>
+        // --- DYNAMIC GREETING SCRIPT ---
+        const greetingElement = document.getElementById('dynamic-greeting');
+        const currentHour = new Date().getHours();
+        const morningGreetings = ["Good morning!", "Ready for a secure start?"];
+        const afternoonGreetings = ["Good afternoon!", "Time for a security check-in."];
+        const eveningGreetings = ["Good evening!", "Securing your cloud, day and night."];
+        let greeting = "";
+        if (currentHour < 12) {
+            greeting = morningGreetings[Math.floor(Math.random() * morningGreetings.length)];
+        } else if (currentHour < 18) {
+            greeting = afternoonGreetings[Math.floor(Math.random() * afternoonGreetings.length)];
+        } else {
+            greeting = eveningGreetings[Math.floor(Math.random() * eveningGreetings.length)];
+        }
+        greetingElement.textContent = greeting;
+    </script>
+=======
     <title>Welcome to Cloud Security Scanner</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
 </head>
@@ -17,5 +163,6 @@
             </div>
         </div>
     </div>
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
 </body>
 </html>

@@ -2,7 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
+<<<<<<< HEAD
+    <title>Aegis Cloud Security Report</title>
+=======
     <title>Cloud Security Report</title>
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
     <style>
         @page {
             size: A4;
@@ -24,6 +28,17 @@
         }
         .header h1 {
             margin: 0;
+<<<<<<< HEAD
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 10px;
+            color: #00A896; /* Match primary color */
+        }
+        .header h1 i {
+            font-size: 1.5em;
+=======
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
         }
         .header .subtitle {
             font-size: 1.1em;
@@ -49,8 +64,13 @@
             font-size: 1.1em;
             color: #555;
         }
+<<<<<<< HEAD
+        .critical-value { color: #D64550; } /* Match danger color */
+        .ok-value { color: #4CAF50; } /* Match success color */
+=======
         .critical-value { color: #e74c3c; }
         .ok-value { color: #2ecc71; }
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
         table {
             width: 100%;
             border-collapse: collapse;
@@ -63,7 +83,11 @@
             word-wrap: break-word;
         }
         th {
+<<<<<<< HEAD
+            background-color: #00A896; /* Match primary color */
+=======
             background-color: #3498db;
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
             color: white;
         }
         tr:nth-child(even) {
@@ -71,11 +95,23 @@
         }
         .status-CRITICAL {
             font-weight: bold;
+<<<<<<< HEAD
+            color: #D64550; /* Match danger color */
+=======
             color: #e74c3c;
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
         }
         .status-OK {
             color: #27ae60;
         }
+<<<<<<< HEAD
+        .remediation-cell {
+            background-color: #fcf8e3;
+            font-size: 0.9em;
+            color: #8a6d3b;
+        }
+=======
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
         footer {
             position: fixed;
             bottom: -40px;
@@ -89,11 +125,19 @@
 </head>
 <body>
     <footer>
+<<<<<<< HEAD
+        Aegis Cloud Scanner - Report Generated on {{ scan_date.strftime('%Y-%m-%d %H:%M') }}
+    </footer>
+
+    <div class="header">
+        <h1><i class="fas fa-shield-alt"></i> Aegis Cloud Security Report</h1>
+=======
         Cloud Security Scanner - Report Generated on {{ scan_date.strftime('%Y-%m-%d %H:%M') }}
     </footer>
 
     <div class="header">
         <h1>Cloud Security Report</h1>
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
         <p class="subtitle">An automated assessment of your AWS security posture.</p>
     </div>
 
@@ -130,6 +174,16 @@
                 <td class="status-{{ result.status }}">{{ result.status }}</td>
                 <td>{{ result.issue }}</td>
             </tr>
+<<<<<<< HEAD
+            {% if result.remediation %}
+            <tr class="remediation-row">
+                <td colspan="4" class="remediation-cell">
+                    <strong>Remediation:</strong> {{ result.remediation }}
+                </td>
+            </tr>
+            {% endif %}
+=======
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
             {% else %}
             <tr>
                 <td colspan="4" style="text-align:center;">No findings to report.</td>
@@ -137,6 +191,9 @@
             {% endfor %}
         </tbody>
     </table>
+<<<<<<< HEAD
+=======
 
+>>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
 </body>
 </html>
