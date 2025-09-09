@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # Aegis Cloud Scanner (v0.7)
 
 ![Aegis Logo Animation](https://i.imgur.com/947ARvo.gif)
@@ -148,7 +147,6 @@ Open a terminal or command prompt in your project's root directory.
     ```bash
     git push -u origin main
     ```
-=======
 # Aegis Cloud Security Scanner
 
 Aegis is a self-hosted, web-based tool designed to continuously scan your AWS environment for security misconfigurations. It provides a user-friendly dashboard, historical trend analysis, and automated reporting to help you maintain a strong security posture.
@@ -230,4 +228,4 @@ python app.py
 ```
 
 The application will be available at `http://127.0.0.1:5000`.
->>>>>>> 89c69e853c15feb701d5ba7706fb273163f870d1
+
