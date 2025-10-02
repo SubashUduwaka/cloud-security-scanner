@@ -17,7 +17,7 @@
 
 [Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Demo](#-demo) • [Contributing](#-contributing)
 
-<img src="https://i.imgur.com/A5CGI6x.png" alt="Aegis Dashboard" width="800"/>
+<img src="https://i.imgur.com/As7fEvN.png" alt="Aegis Dashboard" width="800"/>
 
 </div>
 
@@ -186,31 +186,25 @@ python app.py
 ---
 
 ### 🔍 Security Scan Results
-<img src="https://i.imgur.com/As7fEvN.png" alt="Scan Results" width="800"/>
+<img src="https://i.imgur.com/DXJduKK.png" alt="Scan Results" width="800"/>
 <sub>Detailed findings with severity classification and remediation guidance</sub>
 
 ---
 
 ### 🤖 AI-Powered Chatbot Assistant
-<img src="https://i.imgur.com/2YQgBiX.png" alt="AI Chatbot" width="800"/>
+<img src="https://i.imgur.com/VlGBr2g.png" alt="AI Chatbot" width="800"/>
 <sub>Get instant security guidance with Gemini AI integration</sub>
 
 ---
 
-### ⚙️ Settings & Configuration
-<img src="https://i.imgur.com/RJMEfrp.png" alt="Settings Panel" width="800"/>
-<sub>Manage cloud credentials, notifications, and account settings</sub>
-
----
-
 ### 🔑 License Management
-<img src="https://i.imgur.com/DXJduKK.png" alt="License Management" width="800"/>
+<img src="https://i.imgur.com/akCMA8W.png" alt="License Management" width="800"/>
 <sub>Easy license activation and upgrade to Pro features</sub>
 
 ---
 
 ### 📄 Professional PDF Reports
-<img src="https://i.imgur.com/akCMA8W.png" alt="PDF Reports" width="800"/>
+<img src="https://i.imgur.com/RJMEfrp.png" alt="PDF Reports" width="800"/>
 <sub>Generate audit-ready reports with executive summaries and detailed findings</sub>
 
 </div>
