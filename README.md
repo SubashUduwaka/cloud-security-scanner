@@ -174,7 +174,7 @@ python app.py
 <div align="center">
 
 ### 🏠 Main Dashboard - Security Overview
-<img src="https://i.imgur.com/VlGBr2g.png" alt="Main Dashboard" width="800"/>
+<img src="https://i.imgur.com/2YQgBiX.png" alt="Main Dashboard" width="800"/>
 <sub>Real-time security posture monitoring with interactive charts and metrics</sub>
 
 ---
@@ -192,7 +192,7 @@ python app.py
 ---
 
 ### 🤖 AI-Powered Chatbot Assistant
-<img src="https://i.imgur.com/VlGBr2g.png" alt="AI Chatbot" width="800"/>
+<img src="https://i.imgur.com/VlGBr2g.png" alt="AI Chatbot" width="250"/>
 <sub>Get instant security guidance with Gemini AI integration</sub>
 
 ---
