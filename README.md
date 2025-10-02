@@ -299,11 +299,11 @@ See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 👨‍💻 Author
+## 👨‍💻 Authors
 
 <div align="center">
 
-**Subash Dananjaya Uduwaka**
+**Aegis Cloud Team**
 
 [![Email](https://img.shields.io/badge/Email-aegis.aws.scanner%40gmail.com-red?style=for-the-badge&logo=gmail)](mailto:aegis.aws.scanner@gmail.com)
 [![GitHub](https://img.shields.io/badge/GitHub-SubashUduwaka-black?style=for-the-badge&logo=github)](https://github.com/SubashUduwaka)
