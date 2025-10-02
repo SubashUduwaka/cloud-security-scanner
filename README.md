@@ -1,226 +1,359 @@
-# Aegis Cloud Security Scanner
+<div align="center">
 
-![Aegis Logo Animation](https://i.imgur.com/947ARvo.gif)
+# 🛡️ Aegis Cloud Security Scanner
 
-Aegis is a comprehensive web-based Cloud Security Posture Management (CSPM) tool designed to scan **AWS**, **GCP**, and **Azure** environments for security misconfigurations and compliance violations. It provides an intuitive dashboard to run scans, visualize security posture, manage credentials securely, and review historical scan data.
+<img src="https://i.imgur.com/947ARvo.gif" alt="Aegis Logo" width="300"/>
 
-![Aegis Dashboard Screenshot](https://i.imgur.com/A5CGI6x.png)
+### Enterprise-Grade Multi-Cloud Security Posture Management (CSPM)
+
+[![License](https://img.shields.io/badge/license-GPL--3.0-blue.svg)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.13+-blue.svg)](https://www.python.org/downloads/)
+[![Flask](https://img.shields.io/badge/flask-3.0.0-green.svg)](https://flask.palletsprojects.com/)
+[![Docker](https://img.shields.io/badge/docker-ready-brightgreen.svg)](Dockerfile)
+[![PRs Welcome](https://img.shields.io/badge/PRs-welcome-brightgreen.svg)](CONTRIBUTING.md)
+[![GitHub Release](https://img.shields.io/github/v/release/SubashUduwaka/cloud-security-scanner)](https://github.com/SubashUduwaka/cloud-security-scanner/releases)
+
+**Scan AWS, GCP & Azure | 100+ Security Checks | AI-Powered Assistance | Compliance Tracking**
+
+[Features](#-features) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Demo](#-demo) • [Contributing](#-contributing)
+
+<img src="https://i.imgur.com/A5CGI6x.png" alt="Aegis Dashboard" width="800"/>
+
+</div>
+
+---
+
+## 🌟 Why Aegis?
+
+Aegis Cloud Security Scanner is a **free, open-source** Cloud Security Posture Management (CSPM) tool that helps you:
+
+- ✅ **Identify security misconfigurations** across AWS, GCP, and Azure
+- ✅ **Track compliance** with SOC 2, ISO 27001, GDPR, and HIPAA
+- ✅ **Get AI-powered remediation guidance** with integrated Gemini chatbot
+- ✅ **Generate professional reports** for stakeholders
+- ✅ **Monitor security posture** over time with trend analysis
+
+> **Built by a security enthusiast for the security community** 🔐
 
 ---
 
 ## ✨ Features
 
-### Security Scanning
--   **Multi-Cloud Scanning**: Comprehensive scanning for **Amazon Web Services (AWS)**, **Google Cloud Platform (GCP)**, and **Microsoft Azure** from a single unified interface.
--   **Comprehensive Checks**: 100+ security checks covering IAM, storage, databases, networking, encryption, logging, and more.
--   **Compliance Frameworks**: Built-in support for SOC 2, ISO 27001, GDPR, and HIPAA compliance checks.
--   **Detailed Findings**: Clear descriptions, severity ratings, remediation advice, and direct documentation links for each issue.
--   **Finding Suppression**: Acknowledge and hide specific findings that are not relevant to your environment.
+<table>
+<tr>
+<td width="50%">
 
-### User Experience
--   **Modern Web Dashboard**: Intuitive UI with real-time visualizations using Chart.js for security posture, critical findings, and trends.
--   **Live Progress View**: Real-time console view to monitor running scans with detailed progress updates.
--   **Dark/Light Mode**: Theme toggle that persists across sessions for comfortable viewing.
--   **AI-Powered Chatbot**: Integrated Gemini AI assistant for security guidance and remediation help.
--   **Notification System**: Customizable email and in-app notifications for scan completion and critical findings.
+### 🔍 Security Scanning
+- **Multi-Cloud Support**: AWS, GCP, Azure
+- **100+ Security Checks**: IAM, Storage, Databases, Networks, Encryption
+- **Real-Time Scanning**: Live progress monitoring
+- **Severity Classification**: Critical, High, Medium, Low
+- **Remediation Guidance**: Step-by-step fix instructions
 
-### Enterprise Features
--   **Professional License Management**: Two-tier licensing (Basic/Pro) with easy activation and deactivation.
--   **Multi-User Support**: Complete authentication system with registration, email verification, and password reset.
--   **Two-Factor Authentication (2FA)**: Mandatory TOTP-based 2FA for enhanced account security.
--   **Admin Panel**: Dedicated interface for user management, audit logs, and system monitoring.
--   **Role-Based Access Control**: Admin and standard user roles with appropriate permissions.
+</td>
+<td width="50%">
 
-### Reporting & Compliance
--   **PDF Report Generation**: Professional, branded PDF reports with executive summaries and detailed findings.
--   **Compliance Dashboard**: Track compliance posture across multiple frameworks in real-time.
--   **Historical Tracking**: View scan history and trends over time with interactive charts.
--   **Export Capabilities**: Export scan results and findings in multiple formats.
+### 🤖 AI-Powered Assistance
+- **Gemini AI Chatbot**: 24/7 security guidance
+- **Context-Aware**: Understands your findings
+- **Best Practices**: Industry-standard recommendations
+- **Interactive Help**: Ask questions, get answers
 
-### Security & Privacy
--   **Secure Credential Management**: All cloud credentials encrypted at rest using Fernet symmetric encryption.
--   **Session Security**: Flask-Login session management with automatic timeout and CSRF protection.
--   **Security Headers**: Talisman integration for HTTP security headers (CSP, HSTS, etc.).
--   **Rate Limiting**: Protection against brute force attacks and abuse.
--   **Audit Logging**: Comprehensive audit trail of all user actions and system events.
+</td>
+</tr>
+<tr>
+<td width="50%">
 
----
+### 📊 Compliance & Reporting
+- **4 Major Frameworks**: SOC 2, ISO 27001, GDPR, HIPAA
+- **PDF Report Generation**: Professional, branded reports
+- **Historical Tracking**: Trend analysis over time
+- **Export Options**: Multiple format support
+- **Compliance Dashboard**: Real-time posture tracking
 
-## 🛠️ Tech Stack
+</td>
+<td width="50%">
 
-### Backend
--   **Framework**: Flask 3.0.0 with Gunicorn/Waitress for production
--   **Database**: SQLAlchemy with SQLite (PostgreSQL ready for production)
--   **Cloud SDKs**: Boto3 (AWS), Google Cloud Client Libraries (GCP), Azure SDK (Azure)
--   **AI Integration**: Google Generative AI (Gemini) for chatbot functionality
+### 🔐 Enterprise Security
+- **Two-Factor Authentication**: Mandatory 2FA
+- **Role-Based Access**: Admin & User roles
+- **Credential Encryption**: Fernet encryption at rest
+- **Audit Logging**: Complete activity trail
+- **Session Management**: Secure timeout handling
 
-### Security
--   **Authentication**: Flask-Login (session management), Flask-Bcrypt (password hashing)
--   **Two-Factor Auth**: PyOTP (TOTP-based 2FA with QR code generation)
--   **Encryption**: Fernet (symmetric credential encryption), cryptography library
--   **Protection**: Flask-Talisman (security headers), Flask-WTF (CSRF protection), Flask-Limiter (rate limiting)
-
-### Frontend
--   **UI/UX**: Responsive HTML5, CSS3 with modern dark/light theme
--   **Visualizations**: Chart.js for interactive graphs and charts
--   **Animations**: AOS (Animate On Scroll) for smooth transitions
--   **Icons**: Font Awesome for consistent iconography
-
-### DevOps & Deployment
--   **Containerization**: Docker with multi-stage builds
--   **Production Server**: Gunicorn with multiple workers and threads
--   **Monitoring**: APScheduler for background tasks, psutil for system monitoring
--   **Caching**: Flask-Caching with Redis support
+</td>
+</tr>
+</table>
 
 ---
 
-## 🚀 Getting Started
+## 🚀 Quick Start
 
-### Prerequisites
+### 🐳 Docker (Recommended)
 
--   **Python 3.13+** (recommended) or Python 3.8+
--   **Git** for version control
--   **Docker** (optional, for containerized deployment)
--   A modern web browser (Chrome, Firefox, Edge, Safari)
+```bash
+# Clone the repository
+git clone https://github.com/SubashUduwaka/cloud-security-scanner.git
+cd cloud-security-scanner
 
-### Installation & Setup
+# Build and run with Docker
+docker build -t aegis-scanner .
+docker run -d -p 5000:5000 --name aegis aegis-scanner
 
-#### Option 1: Local Installation
+# Or use Docker Compose
+docker-compose up -d
+```
 
-1.  **Clone the repository:**
-    ```bash
-    git clone https://github.com/your-username/aegis-scanner.git
-    cd aegis-scanner
-    ```
+### 💻 Local Installation
 
-2.  **Create and activate a virtual environment:**
-    ```bash
-    # For Windows
-    python -m venv venv
-    .\venv\Scripts\activate
+```bash
+# Clone the repository
+git clone https://github.com/SubashUduwaka/cloud-security-scanner.git
+cd cloud-security-scanner
 
-    # For macOS/Linux
-    python3 -m venv venv
-    source venv/bin/activate
-    ```
+# Create virtual environment
+python -m venv venv
+source venv/bin/activate  # On Windows: .\venv\Scripts\activate
 
-3.  **Install the required dependencies:**
-    ```bash
-    pip install --upgrade pip
-    pip install -r requirements.txt
-    ```
+# Install dependencies
+pip install -r requirements.txt
 
-4.  **Run the application:**
-    ```bash
-    python app.py
-    ```
+# Run the application
+python app.py
+```
 
-5.  **Access the application:**
-    Open your browser and navigate to `http://127.0.0.1:5000`
+### ⚙️ Initial Setup
 
-#### Option 2: Docker Deployment
-
-1.  **Build the Docker image:**
-    ```bash
-    docker build -t aegis-scanner .
-    ```
-
-2.  **Run the container:**
-    ```bash
-    docker run -d -p 5000:5000 --name aegis aegis-scanner
-    ```
-
-3.  **Access the application:**
-    Open your browser and navigate to `http://localhost:5000`
-
-### Initial Configuration
-
-The first time you run Aegis, you'll be guided through an initial setup wizard:
-
-1.  **Email Configuration**:
-    -   SMTP server settings for email notifications
-    -   For Gmail: Use App Password (16-character code from Google Account Security)
-    -   Supports other SMTP providers (Outlook, SendGrid, etc.)
-
-2.  **Admin Registration Key**:
-    -   Create a secure secret key
-    -   First user registering with this key becomes administrator
-    -   Store this key securely for future admin account creation
-
-3.  **Gemini API Key** (Optional):
-    -   Enable AI-powered chatbot assistance
-    -   Get free API key from [Google AI Studio](https://makersuite.google.com/app/apikey)
-
-The setup process creates a secure `.env` file in `~/.aegisscanner/` with your configuration.
-
-### Usage
-
-1.  **User Registration & Authentication**:
-    -   Register a new account (use Admin Registration Key for first admin user)
-    -   Verify your email address via the confirmation link
-    -   Set up Two-Factor Authentication (2FA) using your authenticator app
-
-2.  **Add Cloud Credentials**:
-    -   Navigate to **Settings → Cloud Credentials**
-    -   Add AWS, GCP, or Azure credentials
-    -   All credentials are encrypted at rest using Fernet encryption
-
-3.  **License Activation** (Optional):
-    -   All users start with **Basic** (5 scans/month)
-    -   Navigate to **Settings → License Management** to upgrade to **Pro**
-    -   Enter license key or request one from support
-
-4.  **Run Security Scans**:
-    -   Go to **Dashboard**
-    -   Select cloud provider, credential profile, and regions
-    -   Click **Run Scan** to start comprehensive security analysis
-    -   Monitor progress in real-time or view results when complete
-
-5.  **Review & Remediate**:
-    -   View findings organized by severity and service
-    -   Check compliance status across frameworks
-    -   Generate PDF reports for stakeholders
-    -   Use AI chatbot for remediation guidance
+1. **Access the application**: Navigate to `http://localhost:5000`
+2. **Complete setup wizard**:
+   - Configure SMTP for email notifications
+   - Create admin registration key
+   - (Optional) Add Gemini API key for AI chatbot
+3. **Register your account**: Use the admin key for the first user
+4. **Set up 2FA**: Scan QR code with your authenticator app
+5. **Add cloud credentials**: Go to Settings → Cloud Credentials
+6. **Run your first scan**: Select provider and click "Run Scan"
 
 ---
 
 ## 📚 Documentation
 
--   **[User Manual](docs/USER_MANUAL.md)**: Complete guide for end users
--   **[Developer Manual](docs/DEVELOPER_MANUAL_PART_1.md)**: Technical documentation for developers
--   **[Deployment Guide](docs/DEPLOYMENT_GUIDE.md)**: Production deployment instructions
--   **[License System](docs/LICENSE_SYSTEM_SUMMARY.md)**: License management documentation
+| Document | Description |
+|----------|-------------|
+| [📖 User Manual](docs/USER_MANUAL.md) | Complete guide for end users |
+| [🔧 Deployment Guide](docs/DEPLOYMENT_GUIDE.md) | Production deployment instructions |
+| [👨‍💻 Developer Docs](.github/DEVELOPER_DOCS/) | Technical documentation for contributors |
+| [📋 Changelog](CHANGELOG.md) | Version history and release notes |
+
+---
+
+## 🎯 Use Cases
+
+### For Security Teams
+- 🔍 **Continuous Monitoring**: Automated security assessments
+- 📊 **Compliance Reporting**: Generate audit-ready reports
+- 🚨 **Incident Response**: Quickly identify misconfigurations
+- 📈 **Risk Management**: Track security posture over time
+
+### For DevOps Engineers
+- ⚡ **Pre-Deployment Checks**: Scan before going to production
+- 🔄 **CI/CD Integration**: Automate security in pipelines
+- 🛠️ **Infrastructure Validation**: Verify IaC configurations
+- 📝 **Documentation**: Generate security documentation
+
+### For Compliance Officers
+- ✅ **Framework Mapping**: Map findings to compliance requirements
+- 📄 **Audit Reports**: Professional PDF reports for auditors
+- 📊 **Dashboard Views**: Real-time compliance status
+- 🔒 **Evidence Collection**: Document security controls
+
+---
+
+## 🎬 Screenshots & Demo
+
+<div align="center">
+
+### 🏠 Main Dashboard - Security Overview
+<img src="https://i.imgur.com/VlGBr2g.png" alt="Main Dashboard" width="800"/>
+<sub>Real-time security posture monitoring with interactive charts and metrics</sub>
+
+---
+
+### 📊 Compliance Center - Framework Tracking
+<img src="https://i.imgur.com/b0ufWGe.png" alt="Compliance Center" width="800"/>
+<sub>Track compliance across SOC 2, ISO 27001, GDPR, and HIPAA frameworks</sub>
+
+---
+
+### 🔍 Security Scan Results
+<img src="https://i.imgur.com/As7fEvN.png" alt="Scan Results" width="800"/>
+<sub>Detailed findings with severity classification and remediation guidance</sub>
+
+---
+
+### 🤖 AI-Powered Chatbot Assistant
+<img src="https://i.imgur.com/2YQgBiX.png" alt="AI Chatbot" width="800"/>
+<sub>Get instant security guidance with Gemini AI integration</sub>
+
+---
+
+### ⚙️ Settings & Configuration
+<img src="https://i.imgur.com/RJMEfrp.png" alt="Settings Panel" width="800"/>
+<sub>Manage cloud credentials, notifications, and account settings</sub>
+
+---
+
+### 🔑 License Management
+<img src="https://i.imgur.com/DXJduKK.png" alt="License Management" width="800"/>
+<sub>Easy license activation and upgrade to Pro features</sub>
+
+---
+
+### 📄 Professional PDF Reports
+<img src="https://i.imgur.com/akCMA8W.png" alt="PDF Reports" width="800"/>
+<sub>Generate audit-ready reports with executive summaries and detailed findings</sub>
+
+</div>
+
+---
+
+## 🛠️ Tech Stack
+
+<div align="center">
+
+| Category | Technologies |
+|----------|-------------|
+| **Backend** | Flask 3.0, SQLAlchemy, Gunicorn |
+| **Cloud SDKs** | Boto3 (AWS), Google Cloud SDK, Azure SDK |
+| **AI** | Google Generative AI (Gemini) |
+| **Security** | Flask-Login, Flask-Bcrypt, PyOTP, Fernet |
+| **Frontend** | HTML5, CSS3, JavaScript, Chart.js |
+| **Database** | SQLite (PostgreSQL ready) |
+| **DevOps** | Docker, Docker Compose |
+
+</div>
+
+---
+
+## 📦 What's Included
+
+```
+cloud-security-scanner/
+├── 📄 app.py                    # Main application
+├── 📁 scanners/                 # Cloud scanners (AWS, GCP, Azure)
+├── 📁 licenses/                 # License management
+├── 📁 templates/                # HTML templates
+├── 📁 static/                   # CSS, JavaScript
+├── 📁 tools/                    # Utilities (crypto, validators, logging)
+├── 📁 docs/                     # User documentation
+├── 📁 .github/DEVELOPER_DOCS/   # Developer documentation
+├── 🐳 Dockerfile                # Docker configuration
+├── 🐳 docker-compose.yml        # Docker Compose setup
+├── 📋 requirements.txt          # Python dependencies
+└── 📖 README.md                 # This file
+```
+
+---
+
+## 🔑 License Management
+
+Aegis uses a **two-tier licensing system**:
+
+### 🆓 Basic (Free)
+- ✅ 5 scans per month
+- ✅ Single cloud provider
+- ✅ Basic reporting
+- ✅ Community support
+
+### 💎 Pro (License Key Required)
+- ✅ Unlimited scans
+- ✅ All cloud providers
+- ✅ AI chatbot
+- ✅ Advanced reporting
+- ✅ Priority support
+
+**🎁 Request a FREE license key**: Email [aegis.aws.scanner@gmail.com](mailto:aegis.aws.scanner@gmail.com)
+
+> License keys are provided **free of charge** for educational and personal use. Just send us an email! 📧
 
 ---
 
 ## 🤝 Contributing
 
-We welcome contributions! Please see [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+We welcome contributions from the community! 🎉
+
+1. 🍴 Fork the repository
+2. 🌿 Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. 💾 Commit your changes (`git commit -m 'Add AmazingFeature'`)
+4. 🚀 Push to the branch (`git push origin feature/AmazingFeature`)
+5. 🎯 Open a Pull Request
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
 
 ---
 
-## 🔒 Security
+## 🐛 Issues & Support
 
-For security concerns or vulnerability reports, please see [SECURITY.md](SECURITY.md).
+### Found a bug? Have a feature request?
+- 🐛 [Report an issue](https://github.com/SubashUduwaka/cloud-security-scanner/issues/new)
+- 💡 [Request a feature](https://github.com/SubashUduwaka/cloud-security-scanner/issues/new)
+
+### Need help?
+- 📖 Check the [User Manual](docs/USER_MANUAL.md)
+- 💬 Open a [Discussion](https://github.com/SubashUduwaka/cloud-security-scanner/discussions)
+- 📧 Email: [aegis.aws.scanner@gmail.com](mailto:aegis.aws.scanner@gmail.com)
+
+---
+
+## 👨‍💻 Author
+
+<div align="center">
+
+**Subash Dananjaya Uduwaka**
+
+[![Email](https://img.shields.io/badge/Email-aegis.aws.scanner%40gmail.com-red?style=for-the-badge&logo=gmail)](mailto:aegis.aws.scanner@gmail.com)
+[![GitHub](https://img.shields.io/badge/GitHub-SubashUduwaka-black?style=for-the-badge&logo=github)](https://github.com/SubashUduwaka)
+[![Phone](https://img.shields.io/badge/Phone-%2B94%2077%20962%206608-green?style=for-the-badge&logo=whatsapp)](tel:+94779626608)
+
+*Built with ❤️ for the security community*
+
+</div>
 
 ---
 
 ## 📄 License
 
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
-## 📧 Support
-
--   **Email**: aegis.aws.scanner@gmail.com
--   **Issues**: [GitHub Issues](https://github.com/your-username/aegis-scanner/issues)
--   **Documentation**: [Wiki](https://github.com/your-username/aegis-scanner/wiki)
+This project is licensed under the **GPL-3.0 License** - see the [LICENSE](LICENSE) file for details.
 
 ---
 
 ## 🙏 Acknowledgments
 
--   Built with ❤️ using Flask, Boto3, and Google Cloud SDK
--   UI inspired by modern security platforms
--   Thanks to the open-source community for amazing tools and libraries
+- 🎨 UI/UX inspired by modern security platforms
+- 🤖 AI powered by Google's Gemini
+- ☁️ Cloud SDKs: AWS Boto3, Google Cloud, Azure SDK
+- 📊 Charts powered by Chart.js
+- 🐳 Containerization with Docker
+- 💙 Built with Flask and Python
+
+---
+
+## ⭐ Star History
+
+<div align="center">
+
+[![Star History Chart](https://api.star-history.com/svg?repos=SubashUduwaka/cloud-security-scanner&type=Date)](https://star-history.com/#SubashUduwaka/cloud-security-scanner&Date)
+
+**If you find Aegis helpful, please consider giving it a ⭐ star!**
+
+</div>
+
+---
+
+<div align="center">
+
+**Made with ❤️ and ☕ by Subash Dananjaya Uduwaka**
+
+[⬆ Back to Top](#-aegis-cloud-security-scanner)
+
+</div>

@@ -1140,7 +1140,7 @@ curl -X POST "https://api.aegisscanner.com/v1/reports" \
 - **API Documentation:** Complete API reference and examples
 
 #### **Professional Support (PRO Users)**
-- **Email Support:** support@aegisscanner.com
+- **Email Support:** aegis.aws.scanner@gmail.com
 - **Response Time:** 24-48 hours for standard issues
 - **Priority Support:** 4-8 hours for critical issues
 - **Phone Support:** Available during business hours
@@ -1448,21 +1448,21 @@ When contacting support, please include:
 
 ### 16.6 Contact Information
 
-#### **Technical Support**
-- **Email:** support@aegisscanner.com
-- **Phone:** +1-800-AEGIS-SCAN (1-800-234-4772)
-- **Hours:** Monday-Friday, 9 AM - 6 PM EST
-- **Emergency:** 24/7 for critical security issues (PRO users)
+#### **Developer & Technical Support**
+- **Developer:** Subash Dananjaya Uduwaka
+- **Email:** aegis.aws.scanner@gmail.com
+- **Phone:** +94 77 962 6608
+- **GitHub:** https://github.com/SubashUduwaka/cloud-security-scanner
+- **Response Time:** 24-48 hours
 
-#### **Sales and Licensing**
-- **Email:** sales@aegisscanner.com
-- **Phone:** +1-800-AEGIS-SALES (1-800-234-4772)
-- **Hours:** Monday-Friday, 9 AM - 8 PM EST
+#### **Support & Licensing**
+- **Email:** aegis.aws.scanner@gmail.com
+- **License Requests:** Submit via Settings → License Management
 
-#### **Documentation and Training**
-- **Documentation:** https://docs.aegisscanner.com
-- **Training Videos:** https://training.aegisscanner.com
-- **Certification:** https://certification.aegisscanner.com
+#### **Documentation**
+- **User Manual:** https://github.com/SubashUduwaka/cloud-security-scanner/blob/main/docs/USER_MANUAL.md
+- **Developer Guide:** https://github.com/SubashUduwaka/cloud-security-scanner/blob/main/docs/DEVELOPER_GUIDE.md
+- **Deployment Guide:** https://github.com/SubashUduwaka/cloud-security-scanner/blob/main/docs/DEPLOYMENT_GUIDE.md
 
 ---
 
