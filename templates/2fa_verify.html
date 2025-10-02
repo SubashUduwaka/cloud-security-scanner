@@ -1,0 +1,124 @@
+{% extends "auth_layout.html" %}
+{% block title %}Verify 2FA - Aegis{% endblock %}
+
+{% block content %}
+<script>document.body.classList.add('auth-body-override');</script>
+<div class="auth-container two-fa-box">
+    <h2><i class="fas fa-key"></i> Two-Factor Authentication</h2>
+    
+    <div id="otpForm" style="display: block;">
+        <p>Enter the 6-digit code from your authenticator app:</p>
+        <form method="post" action="{{ url_for('verify_2fa_login') }}" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+            
+            {% if show_captcha %}
+            <div class="captcha-section mb-3">
+                <label class="form-label">Security Check:</label>
+                <div class="captcha-box p-3 mb-2 bg-light border rounded">
+                    <strong>{{ captcha_question }}</strong>
+                </div>
+                <input type="number" name="captcha" placeholder="Enter your answer" required class="form-control mb-2">
+                <small class="text-muted">Please solve the math problem above to continue.</small>
+            </div>
+            {% endif %}
+            
+            <input type="text" name="otp_code" placeholder="6-digit authenticator code" autocomplete="off" minlength="6" maxlength="6">
+            <button type="submit"><i class="fas fa-sign-in-alt"></i> Verify Code</button>
+        </form>
+    </div>
+
+    {% if has_recovery_codes %}
+    <div class="recovery-option mt-3">
+        <a href="#" onclick="toggleRecoveryForm()" class="btn btn-outline-secondary btn-sm">
+            <i class="fas fa-life-ring"></i> Use Recovery Code Instead
+        </a>
+    </div>
+
+    <div id="recoveryForm" style="display: none;">
+        <p>Enter one of your backup recovery codes:</p>
+        <form method="post" action="{{ url_for('verify_2fa_login') }}" class="auth-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+            
+            {% if show_captcha %}
+            <div class="captcha-section mb-3">
+                <label class="form-label">Security Check:</label>
+                <div class="captcha-box p-3 mb-2 bg-light border rounded">
+                    <strong>{{ captcha_question }}</strong>
+                </div>
+                <input type="number" name="captcha" placeholder="Enter your answer" required class="form-control mb-2">
+            </div>
+            {% endif %}
+            
+            <input type="text" name="recovery_code" placeholder="8-digit recovery code" autocomplete="off" minlength="9" maxlength="9">
+            <button type="submit"><i class="fas fa-unlock"></i> Use Recovery Code</button>
+        </form>
+        <div class="mt-2">
+            <a href="#" onclick="toggleRecoveryForm()" class="btn btn-outline-secondary btn-sm">
+                <i class="fas fa-arrow-left"></i> Back to Authenticator
+            </a>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="device-recovery mt-4">
+        <div class="alert alert-info">
+            <small><strong>Lost your device?</strong> 
+            <a href="{{ url_for('request_2fa_recovery') }}" class="alert-link">
+                Get help accessing your account
+            </a></small>
+        </div>
+    </div>
+
+    <div class="mt-3">
+        <small class="text-muted">
+            Having trouble? Make sure your device time is synchronized and try again.
+        </small>
+    </div>
+</div>
+
+<style>
+.captcha-box {
+    font-size: 1.2em;
+    text-align: center;
+    background: linear-gradient(45deg, #f8f9fa, #e9ecef);
+    border: 2px dashed #6c757d;
+}
+.recovery-option, .email-recovery {
+    border-top: 1px solid #dee2e6;
+    padding-top: 1rem;
+}
+.auth-form input[name="recovery_code"] {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    letter-spacing: 1px;
+}
+</style>
+
+<script>
+function toggleRecoveryForm() {
+    const otpForm = document.getElementById('otpForm');
+    const recoveryForm = document.getElementById('recoveryForm');
+    
+    if (otpForm.style.display === 'none') {
+        otpForm.style.display = 'block';
+        recoveryForm.style.display = 'none';
+    } else {
+        otpForm.style.display = 'none';
+        recoveryForm.style.display = 'block';
+    }
+}
+
+// Auto-format recovery code input
+document.addEventListener('DOMContentLoaded', function() {
+    const recoveryInput = document.querySelector('input[name="recovery_code"]');
+    if (recoveryInput) {
+        recoveryInput.addEventListener('input', function(e) {
+            let value = e.target.value.replace(/\D/g, ''); // Remove non-digits
+            if (value.length > 4) {
+                value = value.substring(0, 4) + '-' + value.substring(4, 8);
+            }
+            e.target.value = value;
+        });
+    }
+});
+</script>
+{% endblock %}

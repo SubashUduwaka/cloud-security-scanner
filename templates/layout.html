@@ -1,0 +1,246 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token_value }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" href="https://unpkg.com/aos@next/dist/aos.css" />
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}?v={{ range(1, 10000) | random }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/sections.css') }}?v={{ range(1, 10000) | random }}">
+    <title>{% block title %}Aegis Cloud Scanner{% endblock %}</title>
+</head>
+<body>
+    <div id="page-background"></div>
+
+    <header class="main-header">
+        <a href="{{ url_for('welcome') }}" class="logo">
+            <div class="header-logo">
+                <svg class="animated-logo-header" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <filter id="header-gold-glow">
+                            <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <path class="header-shield" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z" filter="url(#header-gold-glow)"/>
+                    <polyline class="header-check" points="30,55 45,70 70,40"/>
+                    <path class="header-shield-outline" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z"/>
+                </svg>
+            </div>
+            <div class="logo-text">
+                <h1>Aegis Cloud Scanner</h1>
+                <span>Your Shield in the Cloud.</span>
+            </div>
+        </a>
+        
+        
+        {% set hide_auth_buttons = request.endpoint in ['auth', 'verify_2fa_login', 'request_password_reset', 'reset_with_token'] %}
+        <nav class="main-nav">
+            <!-- Header Info Section -->
+            {% if current_user.is_authenticated or session.get('guest_mode') %}
+            <div class="header-info-section">
+                <!-- Current Date/Time -->
+                <div class="datetime-display" id="datetimeDisplay">
+                    <div class="current-time" id="currentTime">12:00:00</div>
+                    <div class="current-date" id="currentDate">January 1, 2024</div>
+                </div>
+                
+            </div>
+            {% endif %}
+            
+            <!-- User Account Section -->
+            {% if current_user.is_authenticated or session.get('guest_mode') %}
+                <div class="user-account-section">
+                    {% if session.get('guest_mode') %}
+                        <span class="user-greeting">Guest Session</span>
+                    {% else %}
+                        <span class="user-greeting">{{ current_user.username }}</span>
+                    {% endif %}
+                    
+                    <!-- Notifications Bell -->
+                    <button class="notification-bell" id="notificationBell" title="Notifications" onclick="toggleNotificationCenter()">
+                        <i class="fas fa-bell"></i>
+                        <span class="notification-badge" id="notificationCount" style="display: none;">0</span>
+                    </button>
+                    
+                    <!-- Theme Toggle -->
+                    <div class="header-theme-toggle" title="Toggle Dark Mode" onclick="toggleTheme()">
+                        <label class="theme-switch" for="theme-checkbox-header">
+                            <input type="checkbox" id="theme-checkbox-header" />
+                            <div class="slider round"></div>
+                        </label>
+                    </div>
+                    
+                    <!-- Settings Dropdown -->
+                    <div class="settings-dropdown">
+                        <button class="settings-button"><i class="fas fa-user-cog"></i></button>
+                        <div class="dropdown-content">
+                            {% if current_user.is_authenticated and current_user.is_admin %}
+                                <a href="{{ url_for('admin_dashboard') }}">Admin Dashboard</a>
+                                <div class="dropdown-divider"></div>
+                            {% endif %}
+                            <a href="{{ url_for('settings') }}">{% if session.get('guest_mode') %}Credentials{% else %}Settings{% endif %}</a>
+                            <div class="dropdown-divider"></div>
+                            <a href="{{ url_for('help_page') }}">Help & FAQ</a>
+                            <div class="dropdown-divider"></div>
+                            {% if not session.get('guest_mode') %}
+                                <a href="{{ url_for('contact_us') }}"><i class="fas fa-headset"></i> Contact Support</a>
+                                <div class="dropdown-divider"></div>
+                            {% endif %}
+                            {% if session.get('guest_mode') %}
+                                <a href="{{ url_for('welcome') }}">Exit Guest Mode</a>
+                            {% else %}
+                                <a href="{{ url_for('logout') }}">Log Out</a>
+                            {% endif %}
+                            <div class="dropdown-divider"></div>
+                            <a href="#" id="exit-button">Exit Application</a>
+                        </div>
+                    </div>
+                </div>
+            {% elif not hide_auth_buttons %}
+                <div class="auth-buttons">
+                    <a href="{{ url_for('help_page') }}" class="nav-button">Help</a>
+                    <a href="{{ url_for('auth', _anchor='login') }}" class="nav-button">Login</a>
+                    <a href="{{ url_for('auth', _anchor='register') }}" class="nav-button primary">Register</a>
+                </div>
+            {% endif %}
+        </nav>
+    </header>
+
+    <main>
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                <div class="flash-messages-container">
+                {% for category, message in messages %}
+                    <p class="flash {{ category }}"><i class="fas fa-info-circle"></i> {{ message }}</p>
+                {% endfor %}
+                </div>
+            {% endif %}
+        {% endwith %}
+        {% block content %}{% endblock %}
+    </main>
+
+    <div class="chatbot-container">
+        <div id="chatbot-widget" class="chatbot-widget">
+            <div class="chatbot-header">
+                <span>Aegis Help Bot</span>
+                <button id="close-chatbot" class="close-chatbot">&times;</button>
+            </div>
+            <div id="chatbot-body" class="chatbot-body">
+                <div class="chatbot-message bot">Hello! How can I help you today? Ask me how to use a feature.</div>
+            </div>
+            <div class="chatbot-footer">
+                <input type="text" id="chatbot-input" placeholder="Ask a question...">
+                <button id="chatbot-send"><i class="fas fa-paper-plane"></i></button>
+            </div>
+        </div>
+        <button id="open-chatbot" class="open-chatbot">
+            <i class="fas fa-comment-dots"></i>
+        </button>
+    </div>
+
+    <footer style="text-align: center; padding: 2rem; color: var(--medium-grey);">
+        <p>A Project by Aegis Cloud Team</p>
+    </footer>
+
+    <div id="finding-modal" class="modal">
+        <div class="modal-content card">
+            <span id="modal-close" class="modal-close-btn">&times;</span>
+            <div id="modal-content-dynamic"></div>
+        </div>
+    </div>
+    
+    <!-- Replace the existing script tags with these: -->
+	{% if request.endpoint == 'dashboard' or request.endpoint == 'admin_dashboard' %}
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/3.9.1/chart.min.js"></script>
+    {% endif %}
+    
+    <!-- Add missing libraries -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/zxcvbn/4.4.2/zxcvbn.js"></script>
+    <script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}?v={{ range(1, 10000) | random }}"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/aos/2.3.4/aos.js"></script>
+	<script src="https://cdn.jsdelivr.net/npm/tsparticles@2.9.3/tsparticles.bundle.min.js"></script>
+    <script>
+      AOS.init({ duration: 600, once: true });
+    </script>
+    
+    {% if session.get('guest_mode') %}
+    <script>
+        // Guest mode protection: prevent back button exit and auto-cleanup on window close
+        (function() {
+            // Prevent back button navigation from guest mode
+            history.pushState(null, null, location.href);
+            window.addEventListener('popstate', function() {
+                // If user tries to go back, push them forward again
+                history.pushState(null, null, location.href);
+                // Show warning message
+                if (typeof Toastify !== 'undefined') {
+                    Toastify({
+                        text: "⚠️ Cannot navigate away from Guest Mode for security reasons. Use 'Exit Guest Mode' button.",
+                        duration: 4000,
+                        gravity: "top",
+                        position: "center",
+                        style: { background: "#f39c12" },
+                        stopOnFocus: true
+                    }).showToast();
+                } else {
+                    alert("⚠️ Cannot navigate away from Guest Mode for security reasons. Use 'Exit Guest Mode' button.");
+                }
+            });
+            
+            // Auto-cleanup when window/tab is closed
+            function cleanupGuestData() {
+                // Send cleanup request to server (fire and forget)
+                navigator.sendBeacon('/api/cleanup-guest-session', JSON.stringify({
+                    guest_session_id: '{{ session.get("guest_session_id", "") }}'
+                }));
+            }
+            
+            // Listen for various exit events
+            window.addEventListener('beforeunload', cleanupGuestData);
+            window.addEventListener('unload', cleanupGuestData);
+            
+            // Also cleanup on page visibility change (when tab becomes hidden)
+            document.addEventListener('visibilitychange', function() {
+                if (document.visibilityState === 'hidden') {
+                    cleanupGuestData();
+                }
+            });
+            
+            // Periodic check for session expiration (every 30 seconds)
+            setInterval(function() {
+                fetch('/api/check-guest-session', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+                    },
+                    body: JSON.stringify({
+                        guest_session_id: '{{ session.get("guest_session_id", "") }}'
+                    })
+                }).then(response => {
+                    if (!response.ok || response.status === 401) {
+                        // Session expired, redirect to welcome page
+                        window.location.href = '/';
+                    }
+                }).catch(() => {
+                    // Network error, session might be invalid
+                    console.log('Guest session check failed');
+                });
+            }, 30000);
+        })();
+    </script>
+    {% endif %}
+
+    <!-- License Monitor Script - Removed for simplified license system -->
+</body>
+</html>

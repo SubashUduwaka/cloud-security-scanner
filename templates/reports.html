@@ -1,0 +1,524 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Reports - Aegis Cloud Scanner</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/css/bootstrap.min.css">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-daterangepicker/3.0.5/daterangepicker.css">
+    
+    <style>
+    /* Security Reports Theme Colors */
+    :root {
+        --primary-color: #00A896;
+        --accent-color: #007F73;
+        --success-color: #4CAF50;
+        --warning-color: #FF9800;
+        --danger-color: #F44336;
+    }
+    
+    body {
+        background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+        min-height: 100vh;
+    }
+    
+    .main-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color)) !important;
+        box-shadow: 0 4px 20px rgba(0, 168, 150, 0.3);
+    }
+    
+    .quick-report-card {
+        background: white;
+        border-radius: 15px;
+        padding: 2rem;
+        text-align: center;
+        box-shadow: 0 8px 25px rgba(0, 168, 150, 0.1);
+        transition: all 0.3s ease;
+        border: 1px solid rgba(0, 168, 150, 0.1);
+    }
+    
+    .quick-report-card:hover {
+        transform: translateY(-5px);
+        box-shadow: 0 15px 35px rgba(0, 168, 150, 0.2);
+    }
+    
+    .quick-report-card .card-icon {
+        width: 80px;
+        height: 80px;
+        border-radius: 50%;
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        margin: 0 auto 1.5rem;
+        color: white;
+        font-size: 2rem;
+    }
+    
+    .quick-report-card h3 {
+        color: var(--primary-color);
+        font-weight: 600;
+        margin-bottom: 1rem;
+    }
+    
+    .quick-report-card .btn {
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color)) !important;
+        border: none !important;
+        color: white !important;
+        padding: 0.75rem 2rem;
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
+    
+    .quick-report-card .btn:hover {
+        transform: scale(1.05);
+        box-shadow: 0 5px 15px rgba(0, 168, 150, 0.3);
+    }
+    
+    .card {
+        border: 1px solid rgba(0, 168, 150, 0.1);
+        box-shadow: 0 4px 15px rgba(0, 168, 150, 0.05);
+        border-radius: 12px;
+    }
+    
+    .card-header {
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color)) !important;
+        color: white !important;
+        border-radius: 12px 12px 0 0 !important;
+        font-weight: 600;
+    }
+    
+    .btn-primary {
+        background: linear-gradient(135deg, var(--primary-color), var(--accent-color)) !important;
+        border: none !important;
+        border-radius: 25px;
+        padding: 0.5rem 1.5rem;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-primary:hover {
+        transform: translateY(-2px);
+        box-shadow: 0 5px 15px rgba(0, 168, 150, 0.3);
+    }
+    
+    .btn-secondary {
+        background: #6c757d;
+        border: 1px solid #6c757d;
+        border-radius: 25px;
+        transition: all 0.3s ease;
+    }
+    
+    .btn-secondary:hover {
+        background: #5a6268;
+        transform: translateY(-2px);
+    }
+    
+    /* Form styling */
+    .form-control, .form-select {
+        border: 2px solid rgba(0, 168, 150, 0.2);
+        border-radius: 8px;
+        transition: all 0.3s ease;
+    }
+    
+    .form-control:focus, .form-select:focus {
+        border-color: var(--primary-color);
+        box-shadow: 0 0 0 0.25rem rgba(0, 168, 150, 0.25);
+    }
+    
+    /* Report stats styling */
+    .report-stat {
+        background: white;
+        padding: 1.5rem;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0, 168, 150, 0.1);
+        border: 1px solid rgba(0, 168, 150, 0.1);
+    }
+    
+    .report-stat h4 {
+        color: var(--primary-color);
+        font-weight: 600;
+        margin-bottom: 0.5rem;
+    }
+    
+    /* Dark mode support */
+    body.dark-mode {
+        background: #1a1a1a;
+    }
+    
+    body.dark-mode .quick-report-card,
+    body.dark-mode .card,
+    body.dark-mode .report-stat {
+        background: #2c3e50 !important;
+        color: #ecf0f1 !important;
+        border-color: #34495e !important;
+    }
+    
+    body.dark-mode .quick-report-card h3,
+    body.dark-mode .report-stat h4 {
+        color: var(--primary-color) !important;
+    }
+    </style>
+</head>
+
+<body>
+    <!-- Include layout header -->
+    {% extends "layout.html" %}
+    {% block content %}
+
+    <!-- Main Content -->
+    <div class="main-content">
+        <div class="page-header">
+            <h1><i class="fas fa-file-alt"></i> Security Reports</h1>
+            <p>Generate comprehensive security reports and analysis</p>
+        </div>
+
+        <!-- Quick Report Generation Cards -->
+        <div class="row mb-4">
+            <div class="col-md-4">
+                <div class="quick-report-card">
+                    <div class="card-icon">
+                        <i class="fas fa-chart-pie"></i>
+                    </div>
+                    <h3>Executive Summary</h3>
+                    <p>High-level security overview for leadership</p>
+                    <button class="btn btn-light btn-lg" onclick="generateReport('executive')">
+                        <i class="fas fa-chart-pie"></i> Generate Report
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="quick-report-card">
+                    <div class="card-icon">
+                        <i class="fas fa-shield-alt"></i>
+                    </div>
+                    <h3>Compliance Report</h3>
+                    <p>Detailed compliance status and gaps</p>
+                    <button class="btn btn-light btn-lg" onclick="generateReport('compliance')">
+                        <i class="fas fa-shield-alt"></i> Generate Report
+                    </button>
+                </div>
+            </div>
+            <div class="col-md-4">
+                <div class="quick-report-card">
+                    <div class="card-icon">
+                        <i class="fas fa-tools"></i>
+                    </div>
+                    <h3>Technical Report</h3>
+                    <p>In-depth technical security analysis</p>
+                    <button class="btn btn-light btn-lg" onclick="generateReport('technical')">
+                        <i class="fas fa-tools"></i> Generate Report
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Configuration -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3><i class="fas fa-cogs"></i> Report Configuration</h3>
+            </div>
+            <div class="card-body">
+                <form id="reportConfigForm">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label for="reportType" class="form-label">Report Type</label>
+                                <select class="form-select" id="reportType">
+                                    <option value="comprehensive">Comprehensive Report</option>
+                                    <option value="executive">Executive Summary</option>
+                                    <option value="security">Security Focused</option>
+                                    <option value="technical">Technical Analysis</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="outputFormat" class="form-label">Output Format</label>
+                                <select class="form-select" id="outputFormat">
+                                    <option value="pdf">PDF Document</option>
+                                    <option value="html">HTML Report</option>
+                                    <option value="json">JSON Data</option>
+                                    <option value="csv">CSV Export</option>
+                                </select>
+                            </div>
+                            <div class="mb-3">
+                                <label for="dateRange" class="form-label">Date Range</label>
+                                <input type="text" class="form-control" id="dateRange" placeholder="Select date range">
+                            </div>
+                        </div>
+                        <div class="col-md-6">
+                            <div class="mb-3">
+                                <label class="form-label">Include Options</label>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="includeRemediation" checked>
+                                    <label class="form-check-label" for="includeRemediation">
+                                        Include Remediation Steps
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="includeCompliance" checked>
+                                    <label class="form-check-label" for="includeCompliance">
+                                        Include Compliance Analysis
+                                    </label>
+                                </div>
+                                <div class="form-check">
+                                    <input class="form-check-input" type="checkbox" id="includeCosts">
+                                    <label class="form-check-label" for="includeCosts">
+                                        Include Cost Analysis
+                                    </label>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="d-flex gap-3 mt-4">
+                        <button type="button" class="btn btn-primary-custom btn-lg me-3" onclick="generateReport()">
+                            <i class="fas fa-file-alt"></i> Generate Report
+                        </button>
+                        <button type="button" class="btn btn-outline-primary btn-lg me-3" onclick="previewReport()">
+                            <i class="fas fa-eye"></i> Preview
+                        </button>
+                        <button type="button" class="btn btn-outline-secondary btn-lg" onclick="saveTemplate()">
+                            <i class="fas fa-save"></i> Save Template
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <!-- Email Scheduling -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3><i class="fas fa-envelope"></i> Scheduled Reports</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-8">
+                        <div class="mb-3">
+                            <label for="emailRecipients" class="form-label">Email Recipients</label>
+                            <input type="email" class="form-control" id="emailRecipients"
+                                   placeholder="Enter email addresses separated by commas">
+                            <div class="form-text">Separate multiple email addresses with commas</div>
+                        </div>
+
+                        <div class="row mb-3">
+                            <div class="col-md-6">
+                                <label for="reportFrequency" class="form-label">Frequency</label>
+                                <select class="form-select" id="reportFrequency" onchange="updateTimeOptions()">
+                                    <option value="disabled">Disabled</option>
+                                    <option value="daily">Daily</option>
+                                    <option value="weekly" selected>Weekly</option>
+                                    <option value="monthly">Monthly</option>
+                                </select>
+                            </div>
+                            <div class="col-md-6">
+                                <label for="scheduleReportType" class="form-label">Report Type</label>
+                                <select class="form-select" id="scheduleReportType">
+                                    <option value="comprehensive">Comprehensive Report</option>
+                                    <option value="executive">Executive Summary</option>
+                                    <option value="technical">Technical Analysis</option>
+                                    <option value="compliance">Compliance Assessment</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <!-- Time Configuration -->
+                        <div class="schedule-time-config mb-3" id="timeConfig">
+                            <h5 class="mb-3"><i class="fas fa-clock"></i> Delivery Time Settings</h5>
+
+                            <div class="row">
+                                <div class="col-md-4">
+                                    <label for="deliveryTime" class="form-label">Time</label>
+                                    <input type="time" class="form-control" id="deliveryTime" value="09:00">
+                                </div>
+                                <div class="col-md-4">
+                                    <label for="timezone" class="form-label">Timezone</label>
+                                    <select class="form-select" id="timezone">
+                                        <option value="UTC">UTC (GMT+0)</option>
+                                        <option value="America/New_York">Eastern Time (GMT-5/-4)</option>
+                                        <option value="America/Chicago">Central Time (GMT-6/-5)</option>
+                                        <option value="America/Denver">Mountain Time (GMT-7/-6)</option>
+                                        <option value="America/Los_Angeles" selected>Pacific Time (GMT-8/-7)</option>
+                                        <option value="Europe/London">London (GMT+0/+1)</option>
+                                        <option value="Europe/Paris">Central Europe (GMT+1/+2)</option>
+                                        <option value="Asia/Tokyo">Tokyo (GMT+9)</option>
+                                        <option value="Asia/Singapore">Singapore (GMT+8)</option>
+                                        <option value="Australia/Sydney">Sydney (GMT+10/+11)</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4" id="weekDaySelector" style="display: none;">
+                                    <label for="weekDay" class="form-label">Day of Week</label>
+                                    <select class="form-select" id="weekDay">
+                                        <option value="monday" selected>Monday</option>
+                                        <option value="tuesday">Tuesday</option>
+                                        <option value="wednesday">Wednesday</option>
+                                        <option value="thursday">Thursday</option>
+                                        <option value="friday">Friday</option>
+                                        <option value="saturday">Saturday</option>
+                                        <option value="sunday">Sunday</option>
+                                    </select>
+                                </div>
+                                <div class="col-md-4" id="monthDaySelector" style="display: none;">
+                                    <label for="monthDay" class="form-label">Day of Month</label>
+                                    <input type="number" class="form-control" id="monthDay" min="1" max="28" value="1">
+                                    <div class="form-text">Day 1-28 (ensures valid date each month)</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Action Buttons -->
+                        <div class="d-flex gap-2 mt-3">
+                            <button class="btn btn-primary-custom" onclick="scheduleEmailReports()">
+                                <i class="fas fa-clock"></i> Schedule Reports
+                            </button>
+                            <button class="btn btn-success" onclick="testReportDelivery()">
+                                <i class="fas fa-paper-plane"></i> Test Delivery
+                            </button>
+                            <button class="btn btn-outline-secondary" onclick="viewScheduledReports()">
+                                <i class="fas fa-list"></i> View Scheduled
+                            </button>
+                        </div>
+
+                        <!-- Test Status -->
+                        <div class="alert alert-info mt-3" id="testStatus" style="display: none;">
+                            <div class="d-flex align-items-center">
+                                <div class="spinner-border spinner-border-sm me-2" role="status">
+                                    <span class="visually-hidden">Loading...</span>
+                                </div>
+                                <span>Sending test report...</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="col-md-4">
+                        <div class="schedule-info-card">
+                            <h5><i class="fas fa-info-circle text-info"></i> Schedule Information</h5>
+                            <div class="info-item">
+                                <strong>Current Status:</strong>
+                                <span class="badge bg-secondary" id="scheduleStatus">Not Configured</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Next Delivery:</strong>
+                                <span id="nextDelivery">Not scheduled</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Recipients:</strong>
+                                <span id="recipientCount">0</span>
+                            </div>
+                            <div class="info-item">
+                                <strong>Time Zone:</strong>
+                                <span id="currentTimezone">Pacific Time</span>
+                            </div>
+
+                            <hr class="my-3">
+
+                            <h6><i class="fas fa-clock text-warning"></i> Delivery Schedule</h6>
+                            <ul class="schedule-details list-unstyled">
+                                <li><strong>Daily:</strong> Every day at selected time</li>
+                                <li><strong>Weekly:</strong> Every week on selected day</li>
+                                <li><strong>Monthly:</strong> Every month on selected date</li>
+                            </ul>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Report Templates -->
+        <div class="card mb-4">
+            <div class="card-header">
+                <h3><i class="fas fa-layer-group"></i> Report Templates</h3>
+            </div>
+            <div class="card-body">
+                <div class="row">
+                    <div class="col-md-4">
+                        <div class="template-card">
+                            <h5>Executive Template</h5>
+                            <p>High-level overview with key metrics</p>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadTemplate('executive')">Load</button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="template-card">
+                            <h5>Compliance Template</h5>
+                            <p>Detailed compliance and audit report</p>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadTemplate('compliance')">Load</button>
+                        </div>
+                    </div>
+                    <div class="col-md-4">
+                        <div class="template-card">
+                            <h5>Technical Template</h5>
+                            <p>In-depth technical analysis</p>
+                            <button class="btn btn-sm btn-outline-primary" onclick="loadTemplate('technical')">Load</button>
+                        </div>
+                    </div>
+                </div>
+                <button class="btn btn-outline-secondary btn-sm mt-2 w-100" onclick="createNewTemplate()">
+                    <i class="fas fa-plus"></i> Create New Template
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Loading Overlay -->
+    <div class="loading-overlay" id="loadingOverlay" style="display: none;">
+        <div class="loading-content">
+            <div class="spinner-border text-primary mb-3" role="status">
+                <span class="visually-hidden">Loading...</span>
+            </div>
+            <h4>Generating Report...</h4>
+            <p>Please wait while we compile your security data.</p>
+        </div>
+    </div>
+
+
+    {% endblock %}
+
+    <!-- Scripts -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/moment.js/2.29.4/moment.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap-daterangepicker/3.0.5/daterangepicker.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/bootstrap/5.3.0/js/bootstrap.bundle.min.js"></script>
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+    <script>
+        // Initialize date range picker and scheduled reports
+        $(document).ready(function() {
+            $('#dateRange').daterangepicker({
+                startDate: moment().subtract(30, 'days'),
+                endDate: moment(),
+                ranges: {
+                   'Today': [moment(), moment()],
+                   'Yesterday': [moment().subtract(1, 'days'), moment().subtract(1, 'days')],
+                   'Last 7 Days': [moment().subtract(6, 'days'), moment()],
+                   'Last 30 Days': [moment().subtract(29, 'days'), moment()],
+                   'This Month': [moment().startOf('month'), moment().endOf('month')],
+                   'Last Month': [moment().subtract(1, 'month').startOf('month'), moment().subtract(1, 'month').endOf('month')]
+                }
+            });
+
+            // Initialize schedule display
+            if (typeof updateTimeOptions === 'function') {
+                updateTimeOptions();
+            }
+
+            // Add event listeners for schedule updates
+            $('#emailRecipients, #timezone, #deliveryTime').on('input change', function() {
+                if (typeof updateScheduleDisplay === 'function') {
+                    updateScheduleDisplay();
+                }
+            });
+
+            // Initialize theme and other functions from app.js
+            if (typeof initializeTheme === 'function') {
+                initializeTheme();
+            }
+        });
+    </script>
+
+</body>
+</html>

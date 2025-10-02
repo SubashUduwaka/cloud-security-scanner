@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="csrf-token" content="{{ csrf_token_value }}">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <title>{% block title %}Aegis Cloud Scanner{% endblock %}</title>
+    <style>
+        body {
+            background: linear-gradient(-45deg, #00A896, #007F73, #005f5a, #004d46);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            position: relative;
+            overflow-x: hidden;
+            overflow-y: auto;
+        }
+        
+        body::after {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.15);
+            pointer-events: none;
+            z-index: 1;
+        }
+        
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        body::before {
+            content: '';
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: url("data:image/svg+xml,%3Csvg width='40' height='40' viewBox='0 0 40 40' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='%23ffffff' fill-opacity='0.05' fill-rule='evenodd'%3E%3Cpath d='m0 40l40-40h-40v40zm40 0v-40h-40l40 40z'/%3E%3C/g%3E%3C/svg%3E") repeat;
+            pointer-events: none;
+            z-index: -1;
+        }
+        
+        
+        .auth-brand {
+            text-align: center;
+            margin-bottom: 2rem;
+            color: white;
+            animation: fadeInDown 1s ease;
+            position: relative;
+            z-index: 2;
+        }
+        
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .auth-brand .brand-logo {
+            width: 80px;
+            height: 80px;
+            margin: 0 auto 1rem auto;
+            position: relative;
+        }
+        
+        .animated-logo-small {
+            width: 80px;
+            height: 80px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .auth-shield {
+            fill: none;
+            stroke: #00A896;
+            stroke-width: 3;
+            stroke-dasharray: 400;
+            stroke-dashoffset: 400;
+            animation: auth-draw-shield 1.2s ease-out 0.3s forwards;
+        }
+        
+        .auth-ripple {
+            fill: #00A896;
+            opacity: 0;
+            animation: auth-ripple-effect 1s ease-out 1.2s forwards;
+        }
+        
+        .auth-check {
+            fill: none;
+            stroke: #4CAF50;
+            stroke-width: 5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: auth-draw-check 0.6s ease-out 1.5s forwards;
+        }
+        
+        .glow {
+            opacity: 0;
+            animation: auth-pulse-glow 2s ease-in-out infinite alternate 2s;
+        }
+        
+        @keyframes auth-draw-shield { 
+            to { stroke-dashoffset: 0; } 
+        }
+        
+        @keyframes auth-ripple-effect {
+            0% { r: 0; opacity: 0.4; }
+            90% { r: 25; opacity: 0.1; }
+            100% { r: 30; opacity: 0; }
+        }
+        
+        @keyframes auth-draw-check { 
+            to { stroke-dashoffset: 0; } 
+        }
+        
+        @keyframes auth-pulse-glow {
+            from { opacity: 0.2; }
+            to { opacity: 0.6; }
+        }
+        
+        .auth-brand h1 {
+            font-size: 2rem;
+            font-weight: 600;
+            margin: 0;
+            color: white;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .auth-brand p {
+            font-size: 1rem;
+            opacity: 0.9;
+            margin: 0.5rem 0 0 0;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        
+        .auth-wrapper {
+            width: 100%;
+            max-width: 400px;
+            margin: 0 auto;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .auth-container {
+            background: rgba(255, 255, 255, 0.95);
+            backdrop-filter: blur(15px);
+            padding: 2rem;
+            border-radius: 20px;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+            animation: slideInUp 0.8s ease;
+            position: relative;
+            overflow: hidden;
+        }
+        
+        .auth-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, #00A896, #64b5f6, #00A896);
+            background-size: 200% 100%;
+            animation: shimmer 3s ease-in-out infinite;
+        }
+        
+        @keyframes shimmer {
+            0%, 100% { background-position: -200% 0; }
+            50% { background-position: 200% 0; }
+        }
+        
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div id="page-background"></div>
+
+    <div class="auth-brand">
+        <div class="brand-logo">
+            <svg class="animated-logo-small" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <filter id="auth-gold-glow">
+                        <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                    <filter id="auth-green-glow">
+                        <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                <circle class="auth-ripple" cx="50" cy="50" r="0"/>
+                <path class="auth-shield glow" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z" filter="url(#auth-gold-glow)"/>
+                <polyline class="auth-check glow" points="30,55 45,70 70,40" filter="url(#auth-green-glow)"/>
+                <path class="auth-shield" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z"/>
+                <polyline class="auth-check" points="30,55 45,70 70,40"/>
+            </svg>
+        </div>
+        <h1>Aegis Cloud Scanner</h1>
+        <p>Your Shield in the Cloud</p>
+    </div>
+
+    {% block content %}{% endblock %}
+
+    <!-- Flash Messages -->
+    {% with messages = get_flashed_messages(with_categories=true) %}
+        {% if messages %}
+            <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+            <script>
+                {% for category, message in messages %}
+                    Toastify({
+                        text: "{{ message|safe }}",
+                        duration: 5000,
+                        gravity: "top",
+                        position: "right",
+                        style: {
+                            background: "{{ 'linear-gradient(135deg, #4CAF50, #45A049)' if category == 'success' else 'linear-gradient(135deg, #D64550, #B83B46)' if category == 'error' else 'linear-gradient(135deg, #00A896, #007F73)' }}",
+                            color: "white",
+                            borderRadius: "12px",
+                            padding: "16px 20px",
+                            fontSize: "14px",
+                            fontWeight: "500",
+                            boxShadow: "0 8px 32px rgba(0, 0, 0, 0.15)",
+                            backdropFilter: "blur(10px)",
+                            border: "1px solid rgba(255, 255, 255, 0.2)"
+                        },
+                        className: "{{ category }}",
+                        close: true,
+                        stopOnFocus: true
+                    }).showToast();
+                {% endfor %}
+            </script>
+        {% endif %}
+    {% endwith %}
+</body>
+</html>

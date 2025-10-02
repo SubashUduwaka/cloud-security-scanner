@@ -1,0 +1,404 @@
+{% extends "admin_layout.html" %}
+
+{% block title %}License Management - Admin Panel{% endblock %}
+
+{% block content %}
+<div class="container-fluid">
+    <div class="row">
+        <div class="col-12">
+            <div class="card">
+                <div class="card-header">
+                    <h3 class="card-title">🔑 License Management</h3>
+                </div>
+                <div class="card-body">
+
+                    <!-- License Generation Form -->
+                    <div class="row mb-4">
+                        <div class="col-md-6">
+                            <h5>Generate New License</h5>
+                            <form method="POST" action="{{ url_for('admin_generate_license') }}" class="license-form">
+                                {{ csrf_token() }}
+
+                                <div class="mb-3">
+                                    <label for="email" class="form-label">Email Address *</label>
+                                    <input type="email" class="form-control" id="email" name="email" required>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label for="company" class="form-label">Company Name</label>
+                                    <input type="text" class="form-control" id="company" name="company">
+                                </div>
+
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="license_type" class="form-label">License Type</label>
+                                            <select class="form-select" id="license_type" name="license_type">
+                                                <option value="TRIAL">Trial</option>
+                                                <option value="BASIC">Basic</option>
+                                                <option value="PROFESSIONAL">Professional</option>
+                                                <option value="ENTERPRISE">Enterprise</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-6">
+                                        <div class="mb-3">
+                                            <label for="duration" class="form-label">Duration</label>
+                                            <select class="form-select" id="duration" name="duration">
+                                                <option value="ONE_DAY">1 Day</option>
+                                                <option value="SEVEN_DAYS" selected>7 Days</option>
+                                                <option value="THIRTY_DAYS">30 Days</option>
+                                                <option value="THREE_MONTHS">3 Months</option>
+                                                <option value="SIX_MONTHS">6 Months</option>
+                                                <option value="ONE_YEAR">1 Year</option>
+                                            </select>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="mb-3">
+                                    <label class="form-label">Features</label>
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="features" value="AWS_SCAN" id="aws_scan" checked>
+                                                <label class="form-check-label" for="aws_scan">AWS Scanning</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="features" value="AZURE_SCAN" id="azure_scan" checked>
+                                                <label class="form-check-label" for="azure_scan">Azure Scanning</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="features" value="GCP_SCAN" id="gcp_scan" checked>
+                                                <label class="form-check-label" for="gcp_scan">GCP Scanning</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="features" value="AI_ANALYSIS" id="ai_analysis">
+                                                <label class="form-check-label" for="ai_analysis">AI Analysis</label>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="features" value="COMPLIANCE_REPORTS" id="compliance_reports">
+                                                <label class="form-check-label" for="compliance_reports">Compliance Reports</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="features" value="EMAIL_REPORTS" id="email_reports">
+                                                <label class="form-check-label" for="email_reports">Email Reports</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="features" value="API_ACCESS" id="api_access">
+                                                <label class="form-check-label" for="api_access">API Access</label>
+                                            </div>
+                                            <div class="form-check">
+                                                <input class="form-check-input" type="checkbox" name="features" value="MULTI_USER" id="multi_user">
+                                                <label class="form-check-label" for="multi_user">Multi-User</label>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <button type="submit" class="btn btn-primary">
+                                    <i class="fas fa-key"></i> Generate License
+                                </button>
+                            </form>
+                        </div>
+
+                        <div class="col-md-6">
+                            <h5>License Validation</h5>
+                            <form id="validateForm" class="license-form">
+                                <div class="mb-3">
+                                    <label for="validate_key" class="form-label">License Key</label>
+                                    <input type="text" class="form-control" id="validate_key"
+                                           placeholder="AEGIS-XXXX-XXXX-XXXX-XXXX-XX"
+                                           style="font-family: monospace;">
+                                </div>
+                                <button type="submit" class="btn btn-info">
+                                    <i class="fas fa-check"></i> Validate License
+                                </button>
+                            </form>
+
+                            <div id="validationResult" class="mt-3"></div>
+                        </div>
+                    </div>
+
+                    <!-- License Statistics -->
+                    <div class="row mb-4">
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-info"><i class="fas fa-key"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Total Licenses</span>
+                                    <span class="info-box-number" id="totalLicenses">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-success"><i class="fas fa-check"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Active Licenses</span>
+                                    <span class="info-box-number" id="activeLicenses">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-warning"><i class="fas fa-exclamation-triangle"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Expiring Soon</span>
+                                    <span class="info-box-number" id="expiringSoon">-</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="col-md-3">
+                            <div class="info-box">
+                                <span class="info-box-icon bg-danger"><i class="fas fa-times"></i></span>
+                                <div class="info-box-content">
+                                    <span class="info-box-text">Expired</span>
+                                    <span class="info-box-number" id="expiredLicenses">-</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <!-- Recent License Activity -->
+                    <div class="row">
+                        <div class="col-12">
+                            <h5>Recent License Activity</h5>
+                            <div class="table-responsive">
+                                <table class="table table-striped">
+                                    <thead>
+                                        <tr>
+                                            <th>Date</th>
+                                            <th>License Key</th>
+                                            <th>Email</th>
+                                            <th>Type</th>
+                                            <th>Duration</th>
+                                            <th>Status</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody id="licenseActivity">
+                                        <tr>
+                                            <td colspan="7" class="text-center">No license activity data available</td>
+                                        </tr>
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.license-form {
+    background: #f8f9fa;
+    padding: 20px;
+    border-radius: 8px;
+    border: 1px solid #dee2e6;
+}
+
+.info-box {
+    display: block;
+    min-height: 90px;
+    background: #fff;
+    width: 100%;
+    box-shadow: 0 1px 1px rgba(0,0,0,0.1);
+    border-radius: 2px;
+    margin-bottom: 15px;
+}
+
+.info-box-icon {
+    border-top-left-radius: 2px;
+    border-top-right-radius: 0;
+    border-bottom-right-radius: 0;
+    border-bottom-left-radius: 2px;
+    display: block;
+    float: left;
+    height: 90px;
+    width: 90px;
+    text-align: center;
+    font-size: 45px;
+    line-height: 90px;
+    background: rgba(0,0,0,0.2);
+    color: #fff;
+}
+
+.info-box-content {
+    padding: 5px 10px;
+    margin-left: 90px;
+}
+
+.info-box-text {
+    text-transform: uppercase;
+    font-weight: bold;
+    font-size: 13px;
+}
+
+.info-box-number {
+    display: block;
+    margin-top: 5px;
+    font-weight: bold;
+    font-size: 18px;
+}
+
+.bg-info { background-color: #17a2b8 !important; }
+.bg-success { background-color: #28a745 !important; }
+.bg-warning { background-color: #ffc107 !important; }
+.bg-danger { background-color: #dc3545 !important; }
+
+.license-key-display {
+    font-family: 'Courier New', monospace;
+    background: #f1f3f4;
+    padding: 10px;
+    border-radius: 4px;
+    border: 1px solid #ddd;
+    word-break: break-all;
+}
+
+.status-badge {
+    padding: 4px 8px;
+    border-radius: 12px;
+    font-size: 12px;
+    font-weight: bold;
+}
+
+.status-active { background: #d4edda; color: #155724; }
+.status-expired { background: #f8d7da; color: #721c24; }
+.status-expiring { background: #fff3cd; color: #856404; }
+</style>
+
+<script>
+// License type feature presets
+const featurePresets = {
+    'TRIAL': ['AWS_SCAN'],
+    'BASIC': ['AWS_SCAN', 'AZURE_SCAN'],
+    'PROFESSIONAL': ['AWS_SCAN', 'AZURE_SCAN', 'GCP_SCAN', 'AI_ANALYSIS', 'COMPLIANCE_REPORTS'],
+    'ENTERPRISE': ['AWS_SCAN', 'AZURE_SCAN', 'GCP_SCAN', 'AI_ANALYSIS', 'COMPLIANCE_REPORTS', 'EMAIL_REPORTS', 'API_ACCESS', 'MULTI_USER']
+};
+
+// Update features based on license type
+document.getElementById('license_type').addEventListener('change', function() {
+    const licenseType = this.value;
+    const features = featurePresets[licenseType] || [];
+
+    // Uncheck all features
+    document.querySelectorAll('input[name="features"]').forEach(checkbox => {
+        checkbox.checked = false;
+    });
+
+    // Check features for this license type
+    features.forEach(feature => {
+        const checkbox = document.getElementById(feature.toLowerCase());
+        if (checkbox) {
+            checkbox.checked = true;
+        }
+    });
+});
+
+// License validation
+document.getElementById('validateForm').addEventListener('submit', function(e) {
+    e.preventDefault();
+
+    const licenseKey = document.getElementById('validate_key').value.trim();
+    if (!licenseKey) {
+        showValidationResult('Please enter a license key', 'error');
+        return;
+    }
+
+    // Show loading
+    showValidationResult('Validating license...', 'info');
+
+    // Simulate API call (replace with actual endpoint)
+    fetch('/admin/validate-license', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('input[name="csrf_token"]').value
+        },
+        body: JSON.stringify({ license_key: licenseKey })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showValidationResult(formatLicenseInfo(data.license_info), 'success');
+        } else {
+            showValidationResult(data.message || 'Invalid license key', 'error');
+        }
+    })
+    .catch(error => {
+        showValidationResult('Validation error: ' + error.message, 'error');
+    });
+});
+
+function showValidationResult(content, type) {
+    const resultDiv = document.getElementById('validationResult');
+    const alertClass = type === 'success' ? 'alert-success' :
+                     type === 'error' ? 'alert-danger' : 'alert-info';
+
+    resultDiv.innerHTML = `<div class="alert ${alertClass}">${content}</div>`;
+}
+
+function formatLicenseInfo(info) {
+    if (!info) return 'No license information available';
+
+    const features = info.features ? info.features.map(f => f.replace('_', ' ')).join(', ') : 'None';
+    const status = info.is_valid ?
+        (info.remaining_days > 7 ? 'Active' : 'Expiring Soon') :
+        'Expired';
+
+    return `
+        <strong>License Information:</strong><br>
+        <strong>Type:</strong> ${info.license_type}<br>
+        <strong>Email:</strong> ${info.user_email}<br>
+        <strong>Company:</strong> ${info.company || 'Individual'}<br>
+        <strong>Status:</strong> <span class="status-badge status-${status.toLowerCase().replace(' ', '-')}">${status}</span><br>
+        <strong>Expires:</strong> ${info.expiry_date}<br>
+        <strong>Remaining:</strong> ${info.remaining_days} days<br>
+        <strong>Features:</strong> ${features}
+    `;
+}
+
+// Format license key input
+document.getElementById('validate_key').addEventListener('input', function(e) {
+    let value = e.target.value.replace(/[^A-Z0-9]/g, '');
+    let formatted = '';
+
+    if (value.length > 0) {
+        if (!value.startsWith('AEGIS')) {
+            formatted = 'AEGIS-' + value.substring(0, 20);
+        } else {
+            formatted = value.substring(0, 5);
+            const remaining = value.substring(5);
+            for (let i = 0; i < remaining.length; i += 4) {
+                if (i + 4 <= remaining.length) {
+                    formatted += '-' + remaining.substring(i, i + 4);
+                } else if (i < remaining.length) {
+                    formatted += '-' + remaining.substring(i);
+                }
+            }
+        }
+    }
+
+    e.target.value = formatted;
+});
+
+// Load license statistics on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadLicenseStatistics();
+});
+
+function loadLicenseStatistics() {
+    // In a real implementation, you would fetch this data from an API
+    // For now, we'll use placeholder data
+    document.getElementById('totalLicenses').textContent = '0';
+    document.getElementById('activeLicenses').textContent = '0';
+    document.getElementById('expiringSoon').textContent = '0';
+    document.getElementById('expiredLicenses').textContent = '0';
+}
+</script>
+{% endblock %}

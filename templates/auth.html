@@ -1,0 +1,192 @@
+{% extends "auth_layout.html" %}
+{% block title %}Login / Register - Aegis{% endblock %}
+
+{% block content %}
+<script>document.body.classList.add('auth-body-override');</script>
+
+<div class="auth-wrapper">
+    <div class="auth-container">
+        <div class="auth-toggle">
+            <a href="#login" id="showLogin" class="active">Login</a>
+            <a href="#register" id="showRegister">Register</a>
+        </div>
+
+        <form id="loginForm" class="auth-form" method="post" action="{{ url_for('login_post') }}">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+            <h2>Welcome Back</h2>
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="password" name="password" placeholder="Password" required>
+            <div class="form-extra">
+                <a href="{{ url_for('request_password_reset') }}">Forgot Password?</a>
+            </div>
+            <button type="submit">Log In</button>
+        </form>
+
+        <form id="registerForm" class="auth-form" method="post" action="{{ url_for('register_post') }}" style="display: none;">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+            <h2>Create Account</h2>
+            <input type="text" name="username" placeholder="Username" required>
+            <input type="email" name="email" placeholder="Email Address" required>
+            <input type="password" name="password" class="password-strength-input" placeholder="Password" required title="Must be 8+ chars, with uppercase, lowercase, number, and special character.">
+            <div class="strength-bar-container"><div class="strength-bar"></div></div>
+            <small class="strength-text"></small>
+            <input type="password" name="confirm_password" placeholder="Confirm Password" required>
+            <input type="password" name="admin_key" placeholder="Admin Registration Key (Optional)">
+            <div class="eula-container">
+                <input type="checkbox" name="eula" id="eula" required>
+                <label for="eula">I agree to the <a href="{{ url_for('eula') }}" target="_blank">Terms of Service</a></label>
+            </div>
+            <button type="submit">Register</button>
+        </form>
+
+    </div>
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/tsparticles-slim@2.12.0/tsparticles.slim.min.js"></script>
+<script>
+    document.addEventListener('DOMContentLoaded', function() {
+        if (typeof tsParticles !== 'undefined' && document.getElementById('page-background')) {
+            tsParticles.load("page-background", {
+                particles: {
+                    number: { value: 60, density: { enable: true, value_area: 800 } },
+                    color: { value: "#ffffff" },
+                    shape: { type: "circle" },
+                    opacity: { value: 0.3, random: true },
+                    size: { value: 2, random: true },
+                    line_linked: { enable: true, distance: 150, color: "#ffffff", opacity: 0.2, width: 1 },
+                    move: { enable: true, speed: 1, direction: "none", random: false, straight: false, out_mode: "out" },
+                },
+                interactivity: {
+                    detect_on: "canvas",
+                    events: { onhover: { enable: true, mode: "grab" }, resize: true },
+                    modes: { grab: { distance: 140, line_opacity: 0.5 } },
+                },
+                retina_detect: true,
+            });
+        }
+    });
+    
+    document.addEventListener('DOMContentLoaded', function() {
+        const showLogin = document.getElementById('showLogin');
+        const showRegister = document.getElementById('showRegister');
+        const loginForm = document.getElementById('loginForm');
+        const registerForm = document.getElementById('registerForm');
+
+        function switchForm(activeBtn, activeForm, otherForm, otherBtn) {
+            activeBtn.classList.add('active');
+            otherBtn.classList.remove('active');
+            
+            activeForm.style.display = 'block';
+            otherForm.style.display = 'none';
+        }
+
+        showLogin.addEventListener('click', function(e) {
+            e.preventDefault();
+            switchForm(showLogin, loginForm, registerForm, showRegister);
+        });
+
+        showRegister.addEventListener('click', function(e) {
+            e.preventDefault();
+            switchForm(showRegister, registerForm, loginForm, showLogin);
+        });
+
+        // Password strength meter functionality
+        const passwordInput = document.querySelector('.password-strength-input');
+        const strengthBar = document.querySelector('.strength-bar');
+        const strengthText = document.querySelector('.strength-text');
+
+        if (passwordInput && strengthBar && strengthText) {
+            passwordInput.addEventListener('input', function() {
+                const password = this.value;
+                const strength = calculatePasswordStrength(password);
+                updateStrengthMeter(strength);
+            });
+        }
+
+        function calculatePasswordStrength(password) {
+            let score = 0;
+            let feedback = [];
+
+            // Length check
+            if (password.length >= 8) {
+                score += 25;
+            } else {
+                feedback.push('At least 8 characters');
+            }
+
+            // Uppercase letter check
+            if (/[A-Z]/.test(password)) {
+                score += 25;
+            } else {
+                feedback.push('One uppercase letter');
+            }
+
+            // Lowercase letter check
+            if (/[a-z]/.test(password)) {
+                score += 25;
+            } else {
+                feedback.push('One lowercase letter');
+            }
+
+            // Number check
+            if (/\d/.test(password)) {
+                score += 12.5;
+            } else {
+                feedback.push('One number');
+            }
+
+            // Special character check
+            if (/[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]/.test(password)) {
+                score += 12.5;
+            } else {
+                feedback.push('One special character');
+            }
+
+            return {
+                score: score,
+                feedback: feedback,
+                level: getStrengthLevel(score)
+            };
+        }
+
+        function getStrengthLevel(score) {
+            if (score >= 100) return 'excellent';
+            if (score >= 75) return 'good';
+            if (score >= 50) return 'fair';
+            if (score >= 25) return 'weak';
+            return 'very-weak';
+        }
+
+        function updateStrengthMeter(strength) {
+            const { score, feedback, level } = strength;
+
+            // Update bar width
+            strengthBar.style.width = score + '%';
+
+            // Update bar color based on strength level
+            const colors = {
+                'very-weak': '#dc3545',  // Red
+                'weak': '#fd7e14',       // Orange
+                'fair': '#ffc107',       // Yellow
+                'good': '#198754',       // Green
+                'excellent': '#20c997'   // Teal
+            };
+
+            strengthBar.style.backgroundColor = colors[level] || colors['very-weak'];
+
+            // Update text
+            if (score === 0) {
+                strengthText.textContent = '';
+            } else if (score >= 100) {
+                strengthText.textContent = 'Excellent password strength!';
+                strengthText.style.color = colors['excellent'];
+            } else {
+                const levelText = level.charAt(0).toUpperCase() + level.slice(1).replace('-', ' ');
+                const missing = feedback.length > 0 ? ' (Missing: ' + feedback.join(', ') + ')' : '';
+                strengthText.textContent = levelText + ' password strength' + missing;
+                strengthText.style.color = colors[level];
+            }
+        }
+    });
+</script>
+{% endblock %}

@@ -1,0 +1,46 @@
+
+{% extends "layout.html" %}
+{% block title %}Error - Aegis{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 600px; margin: auto; text-align: center;" data-aos="fade-up">
+    <div style="font-size: 4rem; color: var(--danger-color); margin-bottom: 1rem;">
+        <i class="fas fa-exclamation-triangle"></i>
+    </div>
+    
+    <h2>Something Went Wrong</h2>
+    
+    {% if error %}
+        <div class="error-details" style="text-align: left; margin-top: 2rem;">
+            <p><strong>Error:</strong> {{ error.user_message }}</p>
+            
+            {% if error.suggested_action %}
+                <p><strong>Suggested Action:</strong> {{ error.suggested_action }}</p>
+            {% endif %}
+            
+            {% if error.recoverable %}
+                <p style="color: var(--success-color);">
+                    <i class="fas fa-info-circle"></i>
+                    This error is recoverable. Please try your action again.
+                </p>
+            {% endif %}
+            
+            {% if error.request_id %}
+                <p><small><strong>Request ID:</strong> {{ error.request_id }}</small></p>
+            {% endif %}
+        </div>
+    {% else %}
+        <p>{{ error_message or "An unexpected error occurred." }}</p>
+    {% endif %}
+    
+    <div style="margin-top: 2rem;">
+        <a href="{{ url_for('dashboard') }}" class="button">
+            <i class="fas fa-home"></i> Return to Dashboard
+        </a>
+        <a href="javascript:history.back()" class="button-secondary" style="margin-left: 1rem;">
+            <i class="fas fa-arrow-left"></i> Go Back
+        </a>
+    </div>
+</div>
+{% endblock %}
+    

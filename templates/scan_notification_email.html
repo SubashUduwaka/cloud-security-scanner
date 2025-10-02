@@ -1,0 +1,64 @@
+<!-- templates/scan_notification_email.html -->
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Aegis Scanner - Scan Complete</title>
+    <style>
+        body { font-family: Arial, sans-serif; line-height: 1.6; color: #333; }
+        .container { max-width: 600px; margin: 0 auto; padding: 20px; }
+        .header { background: #28a745; color: white; padding: 20px; text-align: center; }
+        .content { padding: 20px; }
+        .results { background: #f8f9fa; padding: 15px; border-radius: 5px; margin: 20px 0; }
+        .critical { color: #dc3545; font-weight: bold; }
+        .safe { color: #28a745; font-weight: bold; }
+        .button { background: #007bff; color: white; padding: 12px 24px; text-decoration: none; border-radius: 5px; display: inline-block; }
+        .footer { font-size: 12px; color: #666; text-align: center; margin-top: 30px; }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <div class="header">
+            <h1>✅ Scan Complete</h1>
+            <p>{{ profile_name }}</p>
+        </div>
+        
+        <div class="content">
+            <p>Hello <strong>{{ user.username }}</strong>,</p>
+            
+            <p>Your scheduled security scan for <strong>{{ profile_name }}</strong> has completed successfully.</p>
+            
+            <div class="results">
+                <h3>🔍 Scan Results</h3>
+                <p><strong>Total Findings:</strong> {{ total_findings }}</p>
+                {% if critical_findings > 0 %}
+                    <p class="critical">⚠️ Critical Issues: {{ critical_findings }}</p>
+                    <p>Immediate attention recommended for critical findings.</p>
+                {% else %}
+                    <p class="safe">✅ No critical issues found</p>
+                {% endif %}
+            </div>
+            
+            <div style="text-align: center; margin: 30px 0;">
+                <a href="http://localhost:5000/dashboard" class="button">
+                    📊 View Detailed Results
+                </a>
+            </div>
+            
+            {% if critical_findings > 0 %}
+            <div style="background: #fff3cd; padding: 15px; border-left: 4px solid #ffc107; margin: 20px 0;">
+                <h4>⚡ Action Required</h4>
+                <p>Critical security issues were found. Please review and address them promptly to maintain your cloud security posture.</p>
+            </div>
+            {% endif %}
+            
+            <p>Best regards,<br>The Aegis Scanner Team</p>
+        </div>
+        
+        <div class="footer">
+            <p>This scan was performed automatically based on your schedule.<br>
+            To modify your scan schedule, <a href="http://localhost:5000/settings">visit your settings</a>.</p>
+        </div>
+    </div>
+</body>
+</html>

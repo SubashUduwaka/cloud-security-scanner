@@ -1,0 +1,781 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Welcome to Aegis Cloud Scanner</title>
+    <link rel="icon" type="image/png" href="{{ url_for('static', filename='images/favicon.png') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .welcome-body {
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 2rem;
+            background: linear-gradient(-45deg, #00A896, #007F73, #005f5a, #004d46);
+            background-size: 400% 400%;
+            animation: gradientShift 15s ease infinite;
+            box-sizing: border-box;
+            position: relative;
+            overflow-x: hidden;
+        }
+
+        @keyframes gradientShift {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+        
+        /* Animated Background Shapes */
+        .welcome-animated-background {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            pointer-events: none;
+            z-index: 1;
+            overflow: hidden;
+        }
+
+        .floating-shapes {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+        }
+
+        .shape {
+            position: absolute;
+            opacity: 0.1;
+            background: linear-gradient(45deg, rgba(0, 168, 150, 0.3), rgba(0, 127, 115, 0.3));
+            border-radius: 50%;
+            animation: float 20s infinite linear;
+        }
+
+        .shape-1 {
+            width: 80px;
+            height: 80px;
+            top: 10%;
+            left: 10%;
+            animation-delay: 0s;
+            animation-duration: 25s;
+        }
+
+        .shape-2 {
+            width: 120px;
+            height: 120px;
+            top: 70%;
+            right: 10%;
+            animation-delay: -5s;
+            animation-duration: 30s;
+        }
+
+        .shape-3 {
+            width: 60px;
+            height: 60px;
+            top: 50%;
+            left: 5%;
+            animation-delay: -10s;
+            animation-duration: 20s;
+        }
+
+        .shape-4 {
+            width: 100px;
+            height: 100px;
+            top: 20%;
+            right: 30%;
+            animation-delay: -15s;
+            animation-duration: 35s;
+        }
+
+        .shape-5 {
+            width: 90px;
+            height: 90px;
+            bottom: 20%;
+            left: 30%;
+            animation-delay: -20s;
+            animation-duration: 28s;
+        }
+
+        @keyframes float {
+            0% {
+                transform: translateY(0px) rotate(0deg);
+            }
+            33% {
+                transform: translateY(-30px) rotate(120deg);
+            }
+            66% {
+                transform: translateY(20px) rotate(240deg);
+            }
+            100% {
+                transform: translateY(0px) rotate(360deg);
+            }
+        }
+        
+        .welcome-container {
+            width: 100%;
+            max-width: 800px;
+            background: rgba(0, 0, 0, 0.1);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.2);
+            border-radius: 20px;
+            padding: 3rem;
+            text-align: center;
+            position: relative;
+            z-index: 2;
+            box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
+            animation: slideInUp 0.8s ease;
+        }
+        
+        @keyframes slideInUp {
+            from { opacity: 0; transform: translateY(50px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .welcome-container::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            height: 3px;
+            background: linear-gradient(90deg, var(--primary-color), #64b5f6, var(--primary-color));
+            background-size: 200% 100%;
+            animation: shimmer 3s ease-in-out infinite;
+            border-radius: 20px 20px 0 0;
+        }
+        
+        @keyframes shimmer {
+            0%, 100% { background-position: -200% 0; }
+            50% { background-position: 200% 0; }
+        }
+        
+        .welcome-header {
+            margin-bottom: 2rem;
+            animation: fadeInDown 1s ease;
+        }
+        
+        @keyframes fadeInDown {
+            from { opacity: 0; transform: translateY(-30px); }
+            to { opacity: 1; transform: translateY(0); }
+        }
+        
+        .brand-logo {
+            width: 120px;
+            height: 120px;
+            margin: 0 auto 1.5rem auto;
+            position: relative;
+        }
+        
+        .animated-logo {
+            width: 120px;
+            height: 120px;
+            position: relative;
+            z-index: 2;
+        }
+        
+        .logo-shield {
+            fill: none;
+            stroke: var(--primary-color);
+            stroke-width: 3;
+            stroke-dasharray: 400;
+            stroke-dashoffset: 400;
+            animation: draw-shield 1.2s ease-out 0.3s forwards;
+        }
+        
+        .logo-ripple {
+            fill: var(--primary-color);
+            opacity: 0;
+            animation: ripple-effect 1s ease-out 1.2s forwards;
+        }
+        
+        .logo-check {
+            fill: none;
+            stroke: #4CAF50;
+            stroke-width: 5;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: draw-check 0.6s ease-out 1.5s forwards;
+        }
+        
+        .logo-glow {
+            opacity: 0;
+            animation: pulse-glow 2s ease-in-out infinite alternate 2s;
+        }
+        
+        @keyframes draw-shield { 
+            to { stroke-dashoffset: 0; } 
+        }
+        
+        @keyframes ripple-effect {
+            0% { r: 0; opacity: 0.4; }
+            90% { r: 35; opacity: 0.1; }
+            100% { r: 40; opacity: 0; }
+        }
+        
+        @keyframes draw-check { 
+            to { stroke-dashoffset: 0; } 
+        }
+        
+        @keyframes pulse-glow {
+            from { opacity: 0.2; }
+            to { opacity: 0.6; }
+        }
+        
+        .welcome-header h1 {
+            color: white;
+            font-size: 3rem;
+            font-weight: 600;
+            margin: 0;
+            text-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
+        }
+        
+        .welcome-header .tagline {
+            font-size: 1.1rem;
+            opacity: 0.9;
+            margin: 0.5rem 0 0 0;
+            color: rgba(255, 255, 255, 0.9);
+            text-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
+        }
+        
+        .dynamic-greeting {
+            font-size: 1.5em;
+            color: var(--primary-color);
+            font-weight: 500;
+            margin-top: 0;
+            margin-bottom: 2rem;
+            min-height: 1.5em;
+        }
+
+        .action-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 1.5rem;
+            margin-top: 2.5rem;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .guest-section {
+            grid-column: 1 / -1;
+            margin-top: 2rem;
+            padding-top: 2rem;
+            border-top: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        
+        .guest-section h3 {
+            color: rgba(255, 255, 255, 0.9);
+            font-size: 1.2rem;
+            margin-bottom: 1rem;
+            text-align: center;
+        }
+
+        .action-card {
+            background: rgba(255, 255, 255, 0.05);
+            padding: 2rem 1.5rem;
+            border-radius: 15px;
+            text-decoration: none;
+            color: white;
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            transition: all 0.3s ease;
+            min-height: 180px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            text-align: center;
+            position: relative;
+            backdrop-filter: blur(10px);
+        }
+        
+        .action-card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: linear-gradient(135deg, rgba(0, 168, 150, 0.1), rgba(0, 127, 115, 0.1));
+            border-radius: 15px;
+            opacity: 0;
+            transition: opacity 0.3s ease;
+        }
+        
+        .action-card:hover::before {
+            opacity: 1;
+        }
+        
+        .action-card:hover {
+            background: rgba(255, 255, 255, 0.08);
+            transform: translateY(-5px);
+            border-color: var(--primary-color);
+            box-shadow: 0 10px 30px rgba(0, 168, 150, 0.2);
+        }
+        
+        .action-card i {
+            font-size: 3em;
+            margin-bottom: 1rem;
+            color: var(--primary-color);
+            position: relative;
+            z-index: 1;
+        }
+        
+        .action-card h3 {
+            color: white;
+            margin: 0 0 0.5rem 0;
+            font-size: 1.3rem;
+            font-weight: 600;
+            position: relative;
+            z-index: 1;
+        }
+        
+        .action-card p {
+            color: rgba(255, 255, 255, 0.8);
+            margin: 0;
+            font-size: 0.95rem;
+            position: relative;
+            z-index: 1;
+            line-height: 1.4;
+        }
+
+        /* Guest Mode Styles */
+        .guest-card {
+            position: relative;
+            cursor: pointer;
+            border: 2px solid rgba(255, 193, 7, 0.3);
+            background: linear-gradient(135deg, rgba(255, 193, 7, 0.1), rgba(255, 152, 0, 0.1));
+        }
+        
+        .guest-card:hover {
+            border-color: rgba(255, 193, 7, 0.6);
+            transform: translateY(-5px);
+        }
+        
+        .guest-badge {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background: #ffc107;
+            color: #000;
+            padding: 4px 8px;
+            border-radius: 12px;
+            font-size: 11px;
+            font-weight: 600;
+        }
+        
+        /* Guest Modal Styles */
+        .guest-modal {
+            display: none;
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, 0.8);
+            z-index: 1000;
+            align-items: center;
+            justify-content: center;
+            padding: 20px;
+        }
+        
+        .guest-modal-content {
+            background: white;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 600px;
+            max-height: 90vh;
+            overflow-y: auto;
+            position: relative;
+            color: #333;
+        }
+        
+        .guest-modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px;
+            border-bottom: 1px solid #eee;
+            background: linear-gradient(135deg, #007bff, #0056b3);
+            color: white;
+            border-radius: 12px 12px 0 0;
+        }
+        
+        .guest-modal-header h2 {
+            margin: 0;
+            font-size: 24px;
+        }
+        
+        .close-modal {
+            background: none;
+            border: none;
+            font-size: 28px;
+            cursor: pointer;
+            color: white;
+            padding: 0;
+            width: 30px;
+            height: 30px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+        
+        .close-modal:hover {
+            opacity: 0.7;
+        }
+        
+        .guest-modal-body {
+            padding: 20px;
+        }
+        
+        .guest-intro {
+            margin-bottom: 20px;
+            padding: 15px;
+            background: #f8f9fa;
+            border-radius: 8px;
+            border-left: 4px solid #007bff;
+        }
+        
+        .guest-features {
+            margin-bottom: 20px;
+        }
+        
+        .guest-features h4 {
+            color: #28a745;
+            margin-bottom: 10px;
+        }
+        
+        .guest-features ul {
+            list-style: none;
+            padding: 0;
+        }
+        
+        .guest-features li {
+            padding: 8px 0;
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+        
+        .guest-features li i {
+            color: #28a745;
+            width: 20px;
+        }
+        
+        .guest-limitations {
+            margin-bottom: 20px;
+        }
+        
+        .guest-limitations h4 {
+            color: #ffc107;
+            margin-bottom: 15px;
+        }
+        
+        .limitation-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 10px;
+            padding: 10px;
+            background: #fff3cd;
+            border-radius: 6px;
+        }
+        
+        .limitation-item i {
+            color: #ffc107;
+            width: 20px;
+        }
+        
+        .limitation-item strong {
+            display: block;
+            margin-bottom: 2px;
+        }
+        
+        .limitation-item span {
+            font-size: 14px;
+            color: #666;
+        }
+        
+        .guest-warning {
+            background: #f8d7da;
+            border: 1px solid #f5c6cb;
+            border-radius: 8px;
+            padding: 15px;
+            display: flex;
+            align-items: flex-start;
+            gap: 12px;
+        }
+        
+        .guest-warning i {
+            color: #dc3545;
+            font-size: 18px;
+            margin-top: 2px;
+        }
+        
+        .guest-warning strong {
+            display: block;
+            margin-bottom: 5px;
+            color: #721c24;
+        }
+        
+        .guest-warning p {
+            margin: 0;
+            line-height: 1.4;
+            color: #721c24;
+        }
+        
+        .guest-modal-footer {
+            padding: 20px;
+            border-top: 1px solid #eee;
+            display: flex;
+            justify-content: flex-end;
+            gap: 10px;
+        }
+        
+        .btn {
+            padding: 10px 20px;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 14px;
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-primary {
+            background: #007bff;
+            color: white;
+        }
+        
+        .btn-primary:hover {
+            background: #0056b3;
+        }
+        
+        .btn-secondary {
+            background: #6c757d;
+            color: white;
+        }
+        
+        .btn-secondary:hover {
+            background: #545b62;
+        }
+
+        @media (max-width: 600px) {
+            .action-grid {
+                grid-template-columns: 1fr;
+            }
+            
+            .guest-modal-content {
+                margin: 10px;
+                max-width: calc(100% - 20px);
+            }
+            
+            .guest-modal-header {
+                padding: 15px;
+            }
+            
+            .guest-modal-body {
+                padding: 15px;
+            }
+            
+            .guest-modal-footer {
+                padding: 15px;
+                flex-direction: column;
+            }
+            
+            .btn {
+                justify-content: center;
+            }
+        }
+    </style>
+</head>
+<body class="welcome-body">
+    <!-- Animated Background -->
+    <div class="welcome-animated-background">
+        <div class="floating-shapes">
+            <div class="shape shape-1"></div>
+            <div class="shape shape-2"></div>
+            <div class="shape shape-3"></div>
+            <div class="shape shape-4"></div>
+            <div class="shape shape-5"></div>
+        </div>
+    </div>
+
+    <div class="welcome-container">
+        <div class="welcome-header">
+            <div class="brand-logo">
+                <svg class="animated-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <filter id="logo-gold-glow">
+                            <feGaussianBlur stdDeviation="1.5" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                        <filter id="logo-green-glow">
+                            <feGaussianBlur stdDeviation="1" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <circle class="logo-ripple" cx="50" cy="50" r="0"/>
+                    <path class="logo-shield logo-glow" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z" filter="url(#logo-gold-glow)"/>
+                    <polyline class="logo-check logo-glow" points="30,55 45,70 70,40" filter="url(#logo-green-glow)"/>
+                    <path class="logo-shield" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z"/>
+                    <polyline class="logo-check" points="30,55 45,70 70,40"/>
+                </svg>
+            </div>
+            <h1>Aegis Cloud Scanner</h1>
+            <p class="tagline">Your Shield in the Cloud</p>
+        </div>
+        <p id="dynamic-greeting" class="dynamic-greeting"></p>
+        
+        <div class="action-grid">
+            <a href="{{ url_for('auth', _anchor='login') }}" class="action-card">
+                <i class="fas fa-sign-in-alt"></i>
+                <h3>Login</h3>
+                <p>Access your existing account and dashboard.</p>
+            </a>
+            <a href="{{ url_for('auth', _anchor='register') }}" class="action-card">
+                <i class="fas fa-user-plus"></i>
+                <h3>Register</h3>
+                <p>Create a new account to start scanning.</p>
+            </a>
+            
+            <div class="guest-section">
+                <h3>Or try without registration</h3>
+                <div class="action-card guest-card" onclick="showGuestDetails()">
+                    <i class="fas fa-user-clock"></i>
+                    <h3>Guest Mode</h3>
+                    <p>Quick access with temporary session</p>
+                    <div class="guest-badge">No signup required</div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Guest Mode Details Modal -->
+        <div id="guestModal" class="guest-modal" style="display: none;">
+            <div class="guest-modal-content">
+                <div class="guest-modal-header">
+                    <h2><i class="fas fa-user-clock"></i> Guest Mode</h2>
+                    <button class="close-modal" onclick="hideGuestDetails()">&times;</button>
+                </div>
+                <div class="guest-modal-body">
+                    <div class="guest-intro">
+                        <p>Try Aegis Scanner without creating an account. Perfect for quick testing and evaluation.</p>
+                    </div>
+                    
+                    <div class="guest-features">
+                        <h4>✅ What you can do:</h4>
+                        <ul>
+                            <li><i class="fas fa-plus"></i> Add credential profiles</li>
+                            <li><i class="fas fa-search"></i> Run security scans</li>
+                            <li><i class="fas fa-chart-bar"></i> View scan results</li>
+                            <li><i class="fas fa-shield-alt"></i> Check compliance status</li>
+                        </ul>
+                    </div>
+                    
+                    <div class="guest-limitations">
+                        <h4>⚠️ Important limitations:</h4>
+                        <div class="limitation-item">
+                            <i class="fas fa-clock"></i>
+                            <div>
+                                <strong>Session Duration:</strong>
+                                <span>4 hours maximum</span>
+                            </div>
+                        </div>
+                        <div class="limitation-item">
+                            <i class="fas fa-database"></i>
+                            <div>
+                                <strong>Data Storage:</strong>
+                                <span>Temporary - deleted on exit</span>
+                            </div>
+                        </div>
+                        <div class="limitation-item">
+                            <i class="fas fa-ban"></i>
+                            <div>
+                                <strong>Disabled Features:</strong>
+                                <span>Enterprise hub, automation, scan history</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="guest-warning">
+                        <i class="fas fa-exclamation-triangle"></i>
+                        <div>
+                            <strong>Data Deletion Notice:</strong>
+                            <p>All data will be permanently deleted when your session expires or when you close the browser. This cannot be recovered.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="guest-modal-footer">
+                    <button class="btn btn-secondary" onclick="hideGuestDetails()">Cancel</button>
+                    <form method="post" action="{{ url_for('guest_login') }}" style="display: inline;">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-rocket"></i> Start Guest Session
+                        </button>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // --- DYNAMIC GREETING SCRIPT ---
+        const greetingElement = document.getElementById('dynamic-greeting');
+        const currentHour = new Date().getHours();
+        const morningGreetings = ["Good morning!", "Ready for a secure start?"];
+        const afternoonGreetings = ["Good afternoon!", "Time for a security check-in."];
+        const eveningGreetings = ["Good evening!", "Securing your cloud, day and night."];
+        let greeting = "";
+        if (currentHour < 12) {
+            greeting = morningGreetings[Math.floor(Math.random() * morningGreetings.length)];
+        } else if (currentHour < 18) {
+            greeting = afternoonGreetings[Math.floor(Math.random() * afternoonGreetings.length)];
+        } else {
+            greeting = eveningGreetings[Math.floor(Math.random() * eveningGreetings.length)];
+        }
+        greetingElement.textContent = greeting;
+        
+        // --- GUEST MODE MODAL FUNCTIONS ---
+        function showGuestDetails() {
+            document.getElementById('guestModal').style.display = 'flex';
+            document.body.style.overflow = 'hidden';
+        }
+        
+        function hideGuestDetails() {
+            document.getElementById('guestModal').style.display = 'none';
+            document.body.style.overflow = 'auto';
+        }
+        
+        // Close modal when clicking outside
+        document.getElementById('guestModal').addEventListener('click', function(e) {
+            if (e.target === this) {
+                hideGuestDetails();
+            }
+        });
+        
+        // Close modal with escape key
+        document.addEventListener('keydown', function(e) {
+            if (e.key === 'Escape') {
+                hideGuestDetails();
+            }
+        });
+    </script>
+</body>
+</html>

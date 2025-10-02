@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Initial Setup - Aegis Cloud Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" type="text/css" href="https://cdn.jsdelivr.net/npm/toastify-js/src/toastify.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--bg-color);
+        }
+        .setup-wrapper {
+            display: flex;
+            width: 100vw;
+            min-height: 100vh;
+            justify-content: center;
+            align-items: center;
+            padding: 2rem;
+            box-sizing: border-box;
+        }
+        .setup-card {
+            display: flex;
+            width: 100%;
+            max-width: 1000px;
+            min-height: 700px;
+            border-radius: var(--border-radius);
+            box-shadow: var(--shadow);
+            overflow: hidden;
+        }
+        .brand-pane {
+            width: 40%;
+            background: linear-gradient(to right, #0f2027, #203a43, #2c5364);
+            color: white;
+            padding: 3rem;
+            text-align: center;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+        }
+        .brand-pane h2 { color: white; margin-top: 1.5rem; }
+        .brand-pane p { color: var(--medium-grey); }
+        .form-pane {
+            width: 60%;
+            padding: 3rem;
+            background: var(--card-bg);
+            overflow-y: auto;
+        }
+        .form-pane h3 { color: var(--dark-grey); margin-top: 0; }
+        .form-section { margin-bottom: 2rem; }
+        .form-section h4 { color: var(--primary-color); }
+        .form-control { width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); background-color: var(--card-bg); color: var(--dark-grey); box-sizing: border-box; }
+        .form-group-vertical { display: flex; flex-direction: column; gap: 0.5rem; }
+        .animated-logo-container { height: 120px; width: 120px; margin: 0 auto 1.5rem auto; }
+        .animated-logo { width: 100%; height: 100%; }
+        .logo-shield-bg { fill: rgba(255, 255, 255, 0.1); }
+        .logo-shield-fg { fill: none; stroke: #00A896; stroke-width: 4; stroke-dasharray: 400; stroke-dashoffset: 400; animation: draw-shield 2s ease-in-out forwards; }
+        .logo-check { fill: none; stroke: #4CAF50; stroke-width: 6; stroke-dasharray: 100; stroke-dashoffset: 100; animation: draw-check 1s ease-in-out 1.5s forwards; }
+        @keyframes draw-shield { to { stroke-dashoffset: 0; } }
+        @keyframes draw-check { to { stroke-dashoffset: 0; } }
+
+        /* NEW STYLES for Master Password field */
+        .password-field-container {
+            position: relative;
+            display: flex;
+            align-items: center;
+        }
+        #master_password_display {
+            padding-right: 70px; /* Space for buttons */
+            font-family: 'Courier New', monospace;
+        }
+        .field-actions {
+            position: absolute;
+            right: 10px;
+            display: flex;
+            gap: 0.5rem;
+        }
+        .field-action-btn {
+            background: none;
+            border: none;
+            color: var(--medium-grey);
+            cursor: pointer;
+            font-size: 1.1em;
+            padding: 0.5rem;
+            transition: color 0.2s ease;
+        }
+        .field-action-btn:hover {
+            color: var(--primary-color);
+        }
+        .field-info {
+            font-size: 0.8em;
+            color: var(--medium-grey);
+            margin-top: 0.5rem;
+        }
+
+        @media (max-width: 900px) {
+            .setup-card { flex-direction: column; min-height: auto; }
+            .brand-pane, .form-pane { width: 100%; box-sizing: border-box; }
+        }
+    </style>
+</head>
+<body>
+    <div class="setup-wrapper">
+        <div class="setup-card">
+            <div class="brand-pane">
+                 <div class="animated-logo-container">
+                    <svg class="animated-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                        <path class="logo-shield-bg" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z"/>
+                        <path class="logo-shield-fg" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z"/>
+                        <polyline class="logo-check" points="30,55 45,70 70,40"/>
+                    </svg>
+                </div>
+                <h2>Welcome to Aegis</h2>
+                <p>Let's get your shield configured. Complete the steps on the right to secure your application.</p>
+            </div>
+            <div class="form-pane">
+                <h3><i class="fas fa-cogs"></i> Application Configuration</h3>
+                 <form method="POST" action="/setup">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                    
+                    <div class="form-section">
+                        <h4>Security Keys</h4>
+                        <div class="form-group-vertical">
+                            <label for="secret_key">Secret Key (For Sessions)</label>
+                            <input type="text" name="secret_key" id="secret_key" class="form-control" value="{{ suggested_secret }}" required>
+                        </div>
+                    </div>
+
+                    <div class="form-section">
+                        <h4>Master Encryption Password</h4>
+                        <div class="form-group-vertical">
+                            <label for="master_password_display">Master Password (For Credentials)</label>
+                            <input type="hidden" name="master_password" id="master_password" value="{{ suggested_master_password }}">
+                            
+                            <div class="password-field-container">
+                                <input type="text" id="master_password_display" class="form-control" readonly>
+                                <div class="field-actions">
+                                    <button type="button" id="toggleMasterPasswordVisibilityBtn" class="field-action-btn" title="Toggle visibility">
+                                        <i class="fas fa-eye"></i>
+                                    </button>
+                                    <button type="button" id="copyMasterPasswordBtn" class="field-action-btn" title="Copy to clipboard">
+                                        <i class="fas fa-copy"></i>
+                                    </button>
+                                </div>
+                            </div>
+                            <p class="field-info">
+                                <i class="fas fa-exclamation-triangle"></i> <strong>Crucial:</strong> This password encrypts your cloud credentials. Save it in a password manager. It cannot be recovered.
+                            </p>
+                        </div>
+                    </div>
+
+                     <div class="form-section">
+                        <h4>Email Configuration</h4>
+                        <div class="form-group-vertical">
+                            <label for="mail_username">Gmail Address</label>
+                            <input type="email" name="mail_username" id="mail_username" class="form-control" placeholder="your-email@gmail.com" required>
+                            <label for="mail_password" style="margin-top:1rem;">Gmail App Password</label>
+                            <input type="password" name="mail_password" id="mail_password" class="form-control" placeholder="16-character app password" required>
+                             <button type="button" id="testEmailBtn" class="button-secondary" style="margin-top: 1rem;"><i class="fas fa-paper-plane"></i> Test Settings</button>
+                        </div>
+                    </div>
+                     <div class="form-section">
+                        <h4>Admin Account</h4>
+                        <div class="form-group-vertical">
+                            <label for="admin_key">Admin Registration Key</label>
+                            <input type="text" name="admin_key" id="admin_key" class="form-control" placeholder="Create a secret key for admin registration" required>
+                        </div>
+                    </div>
+                    <button type="submit" class="button" style="width: 100%; padding: 0.8rem; font-size: 1.1em;"><i class="fas fa-save"></i> Save & Finish</button>
+                </form>
+            </div>
+        </div>
+    </div>
+<script type="text/javascript" src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+<script>
+    // --- Test Email Button Logic ---
+    document.getElementById('testEmailBtn').addEventListener('click', async () => {
+        const email = document.getElementById('mail_username').value;
+        const password = document.getElementById('mail_password').value;
+        const button = document.getElementById('testEmailBtn');
+        const originalText = button.innerHTML;
+        if (!email || !password) {
+            Toastify({ text: "Please enter both email and password.", duration: 3000, gravity: "bottom", style: { background: "linear-gradient(to right, #D0021B, #e74c3c)" } }).showToast();
+            return;
+        }
+        button.disabled = true;
+        button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending...';
+        try {
+            const response = await fetch('/test_email', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ email: email, password: password }),
+            });
+            const data = await response.json();
+            if (response.ok) {
+                Toastify({ text: data.message, duration: 4000, gravity: "bottom", style: { background: "linear-gradient(to right, #2ECC71, #27ae60)" } }).showToast();
+            } else { throw new Error(data.error || 'Unknown error'); }
+        } catch (error) {
+            Toastify({ text: `Test failed: ${error.message}`, duration: 5000, gravity: "bottom", style: { background: "linear-gradient(to right, #D0021B, #e74c3c)" } }).showToast();
+        } finally {
+            button.disabled = false;
+            button.innerHTML = originalText;
+        }
+    });
+
+    // --- NEW: Master Password Field Logic ---
+    document.addEventListener('DOMContentLoaded', () => {
+        const fullPasswordInput = document.getElementById('master_password');
+        const displayPasswordInput = document.getElementById('master_password_display');
+        const toggleBtn = document.getElementById('toggleMasterPasswordVisibilityBtn');
+        const copyBtn = document.getElementById('copyMasterPasswordBtn');
+        
+        const fullPassword = fullPasswordInput.value;
+        const obscuredPassword = fullPassword.substring(0, 8) + '•'.repeat(fullPassword.length - 8);
+        let isPasswordVisible = false;
+
+        // Set initial obscured view
+        displayPasswordInput.value = obscuredPassword;
+
+        // Toggle visibility
+        toggleBtn.addEventListener('click', () => {
+            isPasswordVisible = !isPasswordVisible;
+            const icon = toggleBtn.querySelector('i');
+            if (isPasswordVisible) {
+                displayPasswordInput.value = fullPassword;
+                icon.classList.remove('fa-eye');
+                icon.classList.add('fa-eye-slash');
+            } else {
+                displayPasswordInput.value = obscuredPassword;
+                icon.classList.remove('fa-eye-slash');
+                icon.classList.add('fa-eye');
+            }
+        });
+
+        // Copy to clipboard
+        copyBtn.addEventListener('click', () => {
+            navigator.clipboard.writeText(fullPassword).then(() => {
+                const icon = copyBtn.querySelector('i');
+                const originalClass = 'fa-copy';
+                const successClass = 'fa-check';
+
+                icon.classList.remove(originalClass);
+                icon.classList.add(successClass);
+                copyBtn.style.color = 'var(--success-color)';
+
+                Toastify({
+                    text: "Master password copied to clipboard!",
+                    duration: 3000,
+                    gravity: "bottom",
+                    style: { background: "linear-gradient(to right, #2ECC71, #27ae60)" }
+                }).showToast();
+                
+                setTimeout(() => {
+                    icon.classList.remove(successClass);
+                    icon.classList.add(originalClass);
+                    copyBtn.style.color = ''; // Revert to default color
+                }, 2000);
+            }).catch(err => {
+                 Toastify({
+                    text: "Failed to copy password.",
+                    duration: 3000,
+                    gravity: "bottom",
+                    style: { background: "linear-gradient(to right, #D0021B, #e74c3c)" }
+                }).showToast();
+            });
+        });
+    });
+</script>
+</body>
+</html>

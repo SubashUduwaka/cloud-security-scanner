@@ -1,0 +1,2593 @@
+{% extends "layout.html" %}
+{% block title %}Dashboard - Aegis{% endblock %}
+
+{% block content %}
+<script>document.body.classList.add('dashboard-body');</script>
+
+<!-- Animated Background -->
+<div class="dashboard-animated-background">
+    <div class="floating-shapes">
+        <div class="shape shape-1"></div>
+        <div class="shape shape-2"></div>
+        <div class="shape shape-3"></div>
+        <div class="shape shape-4"></div>
+        <div class="shape shape-5"></div>
+    </div>
+</div>
+
+{% if is_guest_mode %}
+<div class="guest-mode-banner">
+    <div class="guest-banner-content">
+        <i class="fas fa-user-clock"></i>
+        <div class="guest-banner-text">
+            <strong>Guest Mode Active</strong>
+            <span>Session expires in 4 hours • <a href="{{ url_for('auth') }}" style="color: rgba(255,255,255,0.9); text-decoration: underline;">Sign Up for Full Access</a></span>
+        </div>
+    </div>
+</div>
+{% endif %}
+
+<!-- FORCE CLEAN SLATE FOR GUEST USERS -->
+<script>
+// Immediately clear any cached data and force fresh dashboard
+window.addEventListener('DOMContentLoaded', function() {
+    // Check if we're in guest mode by looking for the guest banner
+    const guestBanner = document.querySelector('.guest-mode-banner');
+    if (guestBanner || window.location.href.includes('guest') || document.body.textContent.includes('Guest Mode Active')) {
+        console.log('Guest mode detected - clearing all cached data');
+        localStorage.clear();
+        sessionStorage.clear();
+        
+        // Clear any existing chart instances
+        if (window.myCharts) {
+            Object.values(window.myCharts).forEach(chart => {
+                try { chart.destroy(); } catch(e) { console.log('Chart cleanup:', e); }
+            });
+            window.myCharts = {};
+        }
+        
+        // Force all dashboard metrics to show zero
+        document.addEventListener('DOMContentLoaded', function() {
+            setTimeout(() => {
+                const metrics = document.querySelectorAll('.metric-value');
+                metrics.forEach(metric => {
+                    if (metric.textContent !== '0' && metric.textContent !== '0%') {
+                        metric.textContent = metric.id === 'healthScore' ? '100%' : '0';
+                    }
+                });
+                
+                // Clear any data tables
+                const tables = document.querySelectorAll('tbody');
+                tables.forEach(tbody => tbody.innerHTML = '<tr><td colspan="100%" style="text-align: center; color: #666;">No data available - add credentials to start scanning</td></tr>');
+            }, 100);
+        });
+    }
+});
+</script>
+
+{% if not credentials %}
+<div style="background: #f39c12; color: white; padding: 20px; text-align: center; margin: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" id="credentialsPrompt">
+    <h2 style="margin: 0 0 10px 0;">🔑 No Credentials Found</h2>
+    <p style="margin: 0 0 15px 0; font-size: 1.1em;">Add your AWS, GCP, or Azure credentials to start security scanning</p>
+    <a href="/settings" style="background: white; color: #f39c12; padding: 12px 30px; border-radius: 25px; text-decoration: none; font-weight: bold; display: inline-block; transition: all 0.3s;" onmouseover="this.style.transform='scale(1.05)'" onmouseout="this.style.transform='scale(1)'">
+        ➕ Add Credentials Now
+    </a>
+</div>
+{% endif %}
+
+<div class="dashboard-container">
+    <nav class="dashboard-sidebar" data-aos="fade-right">
+        <a href="#dashboard" class="sidebar-link active" data-target="dashboard-section"><i class="fas fa-chart-pie"></i> Dashboard</a>
+        <a href="#results" class="sidebar-link" data-target="results-section"><i class="fas fa-tasks"></i> Scan Results</a>
+        <a href="/reports" class="sidebar-link"><i class="fas fa-file-alt"></i> Reports</a>
+        {% if current_user and current_user.is_authenticated and user_type == 'BASIC' %}
+        <a href="#compliance" class="sidebar-link disabled basic-disabled" title="Feature available in Pro version only"><i class="fas fa-shield-alt"></i> Compliance <i class="fas fa-crown pro-icon"></i></a>
+        <a href="#topology" class="sidebar-link disabled basic-disabled" title="Feature available in Pro version only"><i class="fas fa-project-diagram"></i> Resource Map <i class="fas fa-crown pro-icon"></i></a>
+        <a href="#performance" class="sidebar-link disabled basic-disabled" title="Feature available in Pro version only"><i class="fas fa-chart-line"></i> Performance <i class="fas fa-crown pro-icon"></i></a>
+        <a href="#automation" class="sidebar-link disabled basic-disabled" title="Feature available in Pro version only"><i class="fas fa-cogs"></i> Automation <i class="fas fa-crown pro-icon"></i></a>
+        <a href="#history" class="sidebar-link disabled basic-disabled" title="Feature available in Pro version only"><i class="fas fa-history"></i> Scan History <i class="fas fa-crown pro-icon"></i></a>
+        <a href="#enterprise" class="sidebar-link disabled basic-disabled" title="Feature available in Pro version only"><i class="fas fa-building"></i> Enterprise Hub <i class="fas fa-crown pro-icon"></i></a>
+        {% elif is_guest_mode %}
+        <a href="#compliance" class="sidebar-link" data-target="compliance-section"><i class="fas fa-shield-alt"></i> Compliance</a>
+        <a href="#topology" class="sidebar-link" data-target="topology-section"><i class="fas fa-search"></i> Resource Explorer</a>
+        <a href="#performance" class="sidebar-link" data-target="performance-section"><i class="fas fa-chart-line"></i> Performance</a>
+        <a href="#automation" class="sidebar-link disabled" data-guest-restricted title="Feature not available in guest mode"><i class="fas fa-cogs"></i> Automation <i class="fas fa-lock guest-lock"></i></a>
+        <a href="#history" class="sidebar-link disabled" data-guest-restricted title="Feature not available in guest mode"><i class="fas fa-history"></i> Scan History <i class="fas fa-lock guest-lock"></i></a>
+        <a href="#enterprise" class="sidebar-link disabled" data-guest-restricted title="Feature not available in guest mode"><i class="fas fa-building"></i> Enterprise Hub <i class="fas fa-lock guest-lock"></i></a>
+        {% else %}
+        <a href="#compliance" class="sidebar-link" data-target="compliance-section"><i class="fas fa-shield-alt"></i> Compliance</a>
+        <a href="#topology" class="sidebar-link" data-target="topology-section"><i class="fas fa-search"></i> Resource Explorer</a>
+        <a href="#performance" class="sidebar-link" data-target="performance-section"><i class="fas fa-chart-line"></i> Performance</a>
+        <a href="#automation" class="sidebar-link" data-target="automation-section"><i class="fas fa-cogs"></i> Automation</a>
+        <a href="#history" class="sidebar-link" data-target="history-section"><i class="fas fa-history"></i> Scan History</a>
+        <a href="#enterprise" class="sidebar-link" data-target="reporting-section"><i class="fas fa-building"></i> Enterprise Hub</a>
+        {% endif %}
+        
+    </nav>
+
+    <div class="dashboard-content">
+        <div id="dashboard-section" class="content-section active" data-aos="fade-up">
+            <!-- Scan Controls Panel -->
+            <div class="scan-control-panel card" data-aos="fade-down">
+                <div class="scan-panel-header">
+                    <h3><i class="fas fa-shield-alt"></i> Security Scan Controls</h3>
+                    <div class="scan-status-indicator" id="scanStatusIndicator">
+                        <span class="status-dot status-ready"></span>
+                        <span class="status-text">Ready to Scan</span>
+                    </div>
+                </div>
+                
+                <div class="scan-controls-grid">
+                    <div class="scan-control-group">
+                        <label for="profileSelect">Credential Profile</label>
+                        <select id="profileSelect" class="scan-control-input">
+                            <option value="">Select Credential Profile</option>
+                            {% for credential in credentials %}
+                            <option value="{{ credential.id }}">{{ credential.profile_name }} ({{ credential.cloud_provider }})</option>
+                            {% endfor %}
+                        </select>
+                    </div>
+                    
+                    <div class="scan-control-group">
+						<label for="regionSelect">Target Region</label>
+						<select id="regionSelect" class="scan-control-input">
+							<option value="all" selected>All Regions</option>
+							<option value="us-east-1">US East (N. Virginia)</option>
+							<option value="us-west-2">US West (Oregon)</option>
+							<option value="eu-west-1">Europe (Ireland)</option>
+							<option value="ap-southeast-1">Asia Pacific (Singapore)</option>
+						</select>
+				</div>
+                    
+                    <div class="scan-control-group">
+                    </div>
+                    
+                    <div class="scan-control-group scan-action">
+                        <button id="scanButton" class="scan-button">
+                            <div class="scan-button-content">
+                                <div class="scan-icon-wrapper">
+                                    <i class="fas fa-play scan-icon-play"></i>
+                                    <div class="scan-icon-loading">
+                                        <div class="radar-pulse"></div>
+                                        <i class="fas fa-crosshairs radar-center"></i>
+                                    </div>
+                                </div>
+                                <span class="scan-button-text">Run Security Scan</span>
+                            </div>
+                            <div class="scan-progress-ring">
+                                <svg class="progress-ring" width="60" height="60">
+                                    <circle class="progress-ring-circle" stroke="#4CAF50" stroke-width="3" fill="transparent" r="27" cx="30" cy="30"/>
+                                </svg>
+                            </div>
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- User Status and License Information -->
+            {% if current_user and current_user.is_authenticated %}
+                {% if current_user.is_basic_user() %}
+            <div class="scan-usage-panel card" data-aos="fade-down">
+                <div class="usage-panel-header">
+                    <h3><i class="fas fa-chart-bar"></i> Scan Usage - Basic Plan</h3>
+                    <a href="{{ url_for('license_validation') }}" class="upgrade-link">
+                        <i class="fas fa-crown"></i> Upgrade to Pro
+                    </a>
+                </div>
+                {% endif %}
+            {% endif %}
+
+            <div class="view-mode-toggle">
+                <button class="toggle-btn active" id="compactModeBtn" onclick="toggleViewMode('compact')">
+                    <i class="fas fa-compress-alt"></i> Compact
+                </button>
+                <button class="toggle-btn" id="advancedModeBtn" onclick="toggleViewMode('advanced')">
+                    <i class="fas fa-expand-alt"></i> Advanced
+                </button>
+            </div>
+            
+            <!-- Simple Progress Bar -->
+            <div id="scanProgressBar" class="scan-progress-container" style="display: none;">
+                <div class="thin-progress-bar">
+                    <div class="progress-fill" id="progressFill"></div>
+                </div>
+                <div class="progress-percentage" id="progressPercentage">0%</div>
+            </div>
+
+            <div id="compactView" class="view-mode-content active">
+                <div class="metrics-summary compact">
+                    <div class="metric animated-metric"><div class="metric-icon total"><i class="fas fa-server"></i></div><div class="metric-details"><span class="metric-value" id="totalResources">0</span><span class="metric-label">Total Resources</span></div></div>
+                    <div class="metric animated-metric"><div class="metric-icon critical"><i class="fas fa-exclamation-triangle"></i></div><div class="metric-details"><span class="metric-value" id="criticalFindings">0</span><span class="metric-label">Critical Issues</span></div></div>
+                    <div class="metric animated-metric"><div class="metric-icon health"><i class="fas fa-heartbeat"></i></div><div class="metric-details"><span class="metric-value animated-counter" id="healthScore">100%</span><span class="metric-label">Health Score</span></div></div>
+                    <div class="metric animated-metric"><div class="metric-icon warning"><i class="fas fa-exclamation-circle"></i></div><div class="metric-details"><span class="metric-value" id="warningFindings">0</span><span class="metric-label">Warnings</span></div></div>
+                    <div class="metric animated-metric"><div class="metric-icon info"><i class="fas fa-info-circle"></i></div><div class="metric-details"><span class="metric-value" id="infoFindings">0</span><span class="metric-label">Info Items</span></div></div>
+                </div>
+                <div class="security-overview-enhanced card">
+                    <div class="overview-header">
+                        <div class="header-title">
+                            <i class="fas fa-shield-alt"></i>
+                            <h3>Security Posture</h3>
+                        </div>
+                        <div class="header-status">
+                            <span class="status-indicator status-good" id="overallStatus">
+                                <i class="fas fa-check-circle"></i> Secure
+                            </span>
+                        </div>
+                    </div>
+                    
+                    <div class="overview-stats">
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-server"></i>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-number" id="compactServices">-</span>
+                                <span class="stat-label">Services Monitored</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-clock"></i>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-number" id="compactLastScan">Never</span>
+                                <span class="stat-label">Last Security Scan</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-chart-line"></i>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-number animated-counter" id="compactCompliance">-</span>
+                                <span class="stat-label">Compliance Score</span>
+                            </div>
+                        </div>
+                        
+                        <div class="stat-card">
+                            <div class="stat-icon">
+                                <i class="fas fa-exclamation-triangle"></i>
+                            </div>
+                            <div class="stat-details">
+                                <span class="stat-number" id="activeThreats">0</span>
+                                <span class="stat-label">Active Threats</span>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="overview-progress">
+                        <div class="progress-item">
+                            <span class="progress-label">Security Coverage</span>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill" id="securityCoverage" style="width: 85%"></div>
+                                </div>
+                                <span class="progress-percent">85%</span>
+                            </div>
+                        </div>
+                        
+                        <div class="progress-item">
+                            <span class="progress-label">Remediation Progress</span>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar">
+                                    <div class="progress-fill remediation" id="remediationProgress" style="width: 62%"></div>
+                                </div>
+                                <span class="progress-percent">62%</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div id="advancedView" class="view-mode-content">
+                <div class="dashboard-grid chart-grid-enhanced">
+                    <div class="card chart-container"><canvas id="postureChart"></canvas></div>
+                    <div class="card chart-container"><canvas id="findingsByServiceChart"></canvas></div>
+                    <div class="card chart-container"><canvas id="historicalTrendCanvas"></canvas></div>
+                    <div class="card chart-container"><canvas id="complianceChart"></canvas></div>
+                    <div class="card chart-container"><canvas id="resourceDistributionChart"></canvas></div>
+                    <div class="card chart-container"><canvas id="riskTimelineChart"></canvas></div>
+                </div>
+                <div class="advanced-metrics">
+                    <div class="metrics-summary advanced">
+                        <div class="metric animated-metric"><div class="metric-icon total"><i class="fas fa-server"></i></div><div class="metric-details"><span class="metric-value" id="totalResourcesAdv">0</span><span class="metric-label">Resources Scanned</span></div></div>
+                        <div class="metric animated-metric"><div class="metric-icon critical"><i class="fas fa-exclamation-triangle"></i></div><div class="metric-details"><span class="metric-value" id="criticalFindingsAdv">0</span><span class="metric-label">Critical Findings</span></div></div>
+                        <div class="metric animated-metric"><div class="metric-icon health"><i class="fas fa-heartbeat"></i></div><div class="metric-details"><span class="metric-value animated-counter" id="healthScoreAdv">100%</span><span class="metric-label">Health Score</span></div></div>
+                        <div class="metric animated-metric"><div class="metric-icon regions"><i class="fas fa-globe"></i></div><div class="metric-details"><span class="metric-value" id="regionCount">0</span><span class="metric-label">Regions</span></div></div>
+                        <div class="metric animated-metric"><div class="metric-icon services"><i class="fas fa-cubes"></i></div><div class="metric-details"><span class="metric-value" id="serviceCount">0</span><span class="metric-label">Services</span></div></div>
+                        <div class="metric animated-metric"><div class="metric-icon time"><i class="fas fa-clock"></i></div><div class="metric-details"><span class="metric-value" id="avgScanTimeMetric">0s</span><span class="metric-label">Avg Scan Time</span></div></div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="results-section" class="content-section" data-aos="fade-up">
+            <div class="card">
+                <h2><i class="fas fa-tasks"></i> Current Scan Results</h2>
+                <div class="filter-controls">
+                    <input type="text" id="currentSearch" class="form-control-filter" placeholder="Filter results...">
+                    <select id="currentStatusFilter" class="form-control-filter">
+                        <option value="all">All Statuses</option>
+                        <option value="critical">Critical</option>
+                        <option value="ok">OK</option>
+                    </select>
+                </div>
+                <div id="resultsList" class="results-container">
+                    <div class="empty-state-enhanced">
+                        <i class="fas fa-play-circle"></i>
+                        <p>Click "Run Scan" to see the latest results.</p>
+                    </div>
+                </div>
+            </div>
+        </div>
+		
+
+        <div id="reports-section" class="content-section" data-aos="fade-up">
+            <div class="card">
+                <h2><i class="fas fa-file-alt"></i> Reports Dashboard</h2>
+                <p>Generate, view, and manage your security reports and documentation.</p>
+                
+                <div class="reports-grid">
+                    <div class="report-card">
+                        <div class="report-icon">
+                            <i class="fas fa-file-pdf"></i>
+                        </div>
+                        <h3>PDF Reports</h3>
+                        <p>Generate comprehensive PDF security reports</p>
+                        <button class="button" onclick="window.location.href='/generate-pdf-report'">
+                            <i class="fas fa-download"></i> Generate PDF
+                        </button>
+                    </div>
+                    
+                    <div class="report-card">
+                        <div class="report-icon">
+                            <i class="fas fa-file-csv"></i>
+                        </div>
+                        <h3>CSV Reports</h3>
+                        <p>Export scan data in CSV format for analysis</p>
+                        <button class="button" onclick="window.location.href='/generate-csv-report'">
+                            <i class="fas fa-download"></i> Export CSV
+                        </button>
+                    </div>
+                    
+                    <div class="report-card">
+                        <div class="report-icon">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <h3>Email Reports</h3>
+                        <p>Send reports directly via email</p>
+                        <button class="button" onclick="showEmailReportModal()">
+                            <i class="fas fa-paper-plane"></i> Send Email
+                        </button>
+                    </div>
+                    
+                    <div class="report-card">
+                        <div class="report-icon">
+                            <i class="fas fa-calendar-alt"></i>
+                        </div>
+                        <h3>Scheduled Reports</h3>
+                        <p>Set up automated report generation</p>
+                        <button class="button" onclick="showScheduleReportModal()">
+                            <i class="fas fa-clock"></i> Schedule
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="notifications-section" class="content-section" data-aos="fade-up">
+            <div class="notifications-dashboard">
+                <div class="notifications-header">
+                    <div class="header-left">
+                        <h2><i class="fas fa-bell animated-pulse"></i> Notifications Center</h2>
+                        <div class="notification-stats">
+                            <span class="stat-item"><span class="stat-number" id="totalNotifications">8</span> Total</span>
+                            <span class="stat-item urgent"><span class="stat-number" id="urgentNotifications">3</span> Urgent</span>
+                            <span class="stat-item"><span class="stat-number" id="unreadNotifications">5</span> Unread</span>
+                        </div>
+                    </div>
+                    <div class="header-right">
+                        <div class="notification-actions">
+                            <button class="action-btn primary" onclick="refreshNotifications()">
+                                <i class="fas fa-sync-alt"></i>
+                            </button>
+                            <button class="action-btn" onclick="markAllAsRead()">
+                                <i class="fas fa-check-double"></i>
+                            </button>
+                            <button class="action-btn danger" onclick="clearAllNotifications()">
+                                <i class="fas fa-trash"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="notifications-filter">
+                    <div class="filter-tabs">
+                        <button class="filter-tab active" data-filter="all">All</button>
+                        <button class="filter-tab" data-filter="critical">Critical</button>
+                        <button class="filter-tab" data-filter="security">Security</button>
+                        <button class="filter-tab" data-filter="system">System</button>
+                        <button class="filter-tab" data-filter="reports">Reports</button>
+                    </div>
+                </div>
+                
+                <div class="notifications-container modern-bg" id="notificationsContainer">
+                    <div class="notification-item critical unread">
+                        <div class="notification-icon critical">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title">Critical Security Alert</div>
+                            <div class="notification-message">Unauthorized access attempt detected on AWS CloudTrail</div>
+                            <div class="notification-meta">
+                                <span class="timestamp">2 minutes ago</span>
+                                <span class="source">Security Monitor</span>
+                            </div>
+                        </div>
+                        <div class="notification-actions">
+                            <button class="quick-action" onclick="viewNotificationDetails(1)">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="quick-action" onclick="markAsRead(1)">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="notification-item high unread">
+                        <div class="notification-icon high">
+                            <i class="fas fa-shield-alt"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title">Security Scan Completed</div>
+                            <div class="notification-message">Found 12 high-risk vulnerabilities across 328 resources</div>
+                            <div class="notification-meta">
+                                <span class="timestamp">15 minutes ago</span>
+                                <span class="source">Scan Engine</span>
+                            </div>
+                        </div>
+                        <div class="notification-actions">
+                            <button class="quick-action" onclick="viewScanResults()">
+                                <i class="fas fa-chart-bar"></i>
+                            </button>
+                            <button class="quick-action" onclick="markAsRead(2)">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="notification-item medium">
+                        <div class="notification-icon medium">
+                            <i class="fas fa-database"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title">Database Backup Completed</div>
+                            <div class="notification-message">Automated backup of scan data completed successfully</div>
+                            <div class="notification-meta">
+                                <span class="timestamp">1 hour ago</span>
+                                <span class="source">System</span>
+                            </div>
+                        </div>
+                        <div class="notification-actions">
+                            <button class="quick-action" onclick="markAsRead(3)">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="notification-item info unread">
+                        <div class="notification-icon info">
+                            <i class="fas fa-envelope"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title">Weekly Report Ready</div>
+                            <div class="notification-message">Your scheduled security report is ready for download</div>
+                            <div class="notification-meta">
+                                <span class="timestamp">2 hours ago</span>
+                                <span class="source">Report Generator</span>
+                            </div>
+                        </div>
+                        <div class="notification-actions">
+                            <button class="quick-action" onclick="downloadWeeklyReport()">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="quick-action" onclick="markAsRead(4)">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="notification-item success">
+                        <div class="notification-icon success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="notification-content">
+                            <div class="notification-title">Compliance Check Passed</div>
+                            <div class="notification-message">All SOC2 compliance requirements are now satisfied</div>
+                            <div class="notification-meta">
+                                <span class="timestamp">3 hours ago</span>
+                                <span class="source">Compliance Engine</span>
+                            </div>
+                        </div>
+                        <div class="notification-actions">
+                            <button class="quick-action" onclick="markAsRead(5)">
+                                <i class="fas fa-check"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="compliance-section" class="content-section" data-aos="fade-up">
+            {% if current_user.is_basic_user() %}
+            <div class="pro-feature-restriction">
+                <div class="restriction-content">
+                    <div class="restriction-icon">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="restriction-message">
+                        <h3>Compliance Center - Pro Feature</h3>
+                        <p>Advanced compliance monitoring and reporting is available in our Pro plan. Upgrade to access:</p>
+                        <ul>
+                            <li>SOC2, ISO27001, GDPR, HIPAA compliance frameworks</li>
+                            <li>Automated compliance reporting</li>
+                            <li>Control mapping and gap analysis</li>
+                            <li>Compliance timeline and audit trails</li>
+                        </ul>
+                        <a href="{{ url_for('version_selection') }}" class="upgrade-btn">
+                            <i class="fas fa-arrow-up"></i> Upgrade to Pro
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="compliance-dashboard-modern">
+                <div class="compliance-header">
+                    <div class="header-content">
+                        <h2><i class="fas fa-shield-check animated-glow"></i> Compliance Center</h2>
+                        <div class="compliance-summary">
+                            <div class="overall-score-modern">
+                                <div class="score-ring-container">
+                                    <svg class="score-ring" viewBox="0 0 100 100">
+                                        <circle class="score-ring-bg" cx="50" cy="50" r="40"></circle>
+                                        <circle class="score-ring-progress" cx="50" cy="50" r="40" stroke-dasharray="251.32" stroke-dashoffset="37.7"></circle>
+                                    </svg>
+                                    <div class="score-text">
+                                        <span class="score-number">85%</span>
+                                        <span class="score-label">Overall</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="compliance-stats">
+                                <div class="stat-item">
+                                    <span class="stat-number">4</span>
+                                    <span class="stat-label">Frameworks</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number">127</span>
+                                    <span class="stat-label">Controls</span>
+                                </div>
+                                <div class="stat-item">
+                                    <span class="stat-number">19</span>
+                                    <span class="stat-label">Issues</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="compliance-actions">
+                        <button class="action-btn primary" onclick="generateComplianceReport()">
+                            <i class="fas fa-file-alt"></i> Generate Report
+                        </button>
+                        <button class="action-btn secondary" onclick="exportComplianceData()">
+                            <i class="fas fa-download"></i> Export Data
+                        </button>
+                        <button class="action-btn outline" onclick="runComplianceCheck()">
+                            <i class="fas fa-sync-alt"></i> Run Check
+                        </button>
+                    </div>
+                </div>
+
+                <div class="frameworks-grid">
+                    <div class="framework-card soc2">
+                        <div class="framework-header">
+                            <div class="framework-icon">
+                                <i class="fas fa-certificate"></i>
+                            </div>
+                            <div class="framework-info">
+                                <h3>SOC 2 Type II</h3>
+                                <span class="framework-status compliant">Compliant</span>
+                            </div>
+                            <div class="framework-score">92%</div>
+                        </div>
+                        <div class="framework-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 92%"></div>
+                            </div>
+                            <div class="progress-stats">
+                                <span class="passed">23 Passed</span>
+                                <span class="failed">2 Failed</span>
+                            </div>
+                        </div>
+                        <div class="framework-actions">
+                            <button class="framework-btn" onclick="viewFrameworkDetails('soc2')">
+                                <i class="fas fa-eye"></i> Details
+                            </button>
+                            <button class="framework-btn" onclick="runComplianceCheck('soc2')">
+                                <i class="fas fa-play"></i> Check
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="framework-card iso27001">
+                        <div class="framework-header">
+                            <div class="framework-icon">
+                                <i class="fas fa-globe"></i>
+                            </div>
+                            <div class="framework-info">
+                                <h3>ISO 27001</h3>
+                                <span class="framework-status partial">Partial</span>
+                            </div>
+                            <div class="framework-score">78%</div>
+                        </div>
+                        <div class="framework-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 78%"></div>
+                            </div>
+                            <div class="progress-stats">
+                                <span class="passed">39 Passed</span>
+                                <span class="failed">11 Failed</span>
+                            </div>
+                        </div>
+                        <div class="framework-actions">
+                            <button class="framework-btn" onclick="viewFrameworkDetails('iso27001')">
+                                <i class="fas fa-eye"></i> Details
+                            </button>
+                            <button class="framework-btn" onclick="runComplianceCheck('iso27001')">
+                                <i class="fas fa-play"></i> Check
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="framework-card gdpr">
+                        <div class="framework-header">
+                            <div class="framework-icon">
+                                <i class="fas fa-user-shield"></i>
+                            </div>
+                            <div class="framework-info">
+                                <h3>GDPR</h3>
+                                <span class="framework-status attention">Needs Attention</span>
+                            </div>
+                            <div class="framework-score">65%</div>
+                        </div>
+                        <div class="framework-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 65%"></div>
+                            </div>
+                            <div class="progress-stats">
+                                <span class="passed">26 Passed</span>
+                                <span class="failed">14 Failed</span>
+                            </div>
+                        </div>
+                        <div class="framework-actions">
+                            <button class="framework-btn" onclick="viewFrameworkDetails('gdpr')">
+                                <i class="fas fa-eye"></i> Details
+                            </button>
+                            <button class="framework-btn" onclick="runComplianceCheck('gdpr')">
+                                <i class="fas fa-play"></i> Check
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="framework-card hipaa">
+                        <div class="framework-header">
+                            <div class="framework-icon">
+                                <i class="fas fa-heartbeat"></i>
+                            </div>
+                            <div class="framework-info">
+                                <h3>HIPAA</h3>
+                                <span class="framework-status compliant">Compliant</span>
+                            </div>
+                            <div class="framework-score">94%</div>
+                        </div>
+                        <div class="framework-progress">
+                            <div class="progress-bar">
+                                <div class="progress-fill" style="width: 94%"></div>
+                            </div>
+                            <div class="progress-stats">
+                                <span class="passed">30 Passed</span>
+                                <span class="failed">2 Failed</span>
+                            </div>
+                        </div>
+                        <div class="framework-actions">
+                            <button class="framework-btn" onclick="viewFrameworkDetails('hipaa')">
+                                <i class="fas fa-eye"></i> Details
+                            </button>
+                            <button class="framework-btn" onclick="runComplianceCheck('hipaa')">
+                                <i class="fas fa-play"></i> Check
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="compliance-timeline">
+                    <h3><i class="fas fa-timeline"></i> Recent Compliance Activities</h3>
+                    <div class="timeline-container">
+                        <div class="timeline-item">
+                            <div class="timeline-marker success"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-title">SOC 2 Audit Passed</div>
+                                <div class="timeline-description">All Type II controls successfully validated</div>
+                                <div class="timeline-time">2 hours ago</div>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker warning"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-title">GDPR Data Processing Review</div>
+                                <div class="timeline-description">14 controls require attention for full compliance</div>
+                                <div class="timeline-time">1 day ago</div>
+                            </div>
+                        </div>
+                        <div class="timeline-item">
+                            <div class="timeline-marker info"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-title">Compliance Report Generated</div>
+                                <div class="timeline-description">Q1 2024 compliance report sent to stakeholders</div>
+                                <div class="timeline-time">3 days ago</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="topology-section" class="content-section" data-aos="fade-up">
+            {% if current_user.is_basic_user() %}
+            <div class="pro-feature-restriction">
+                <div class="restriction-content">
+                    <div class="restriction-icon">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="restriction-message">
+                        <h3>Resource Explorer - Pro Feature</h3>
+                        <p>Discover and analyze your cloud infrastructure with our advanced resource explorer. Pro features include:</p>
+                        <ul>
+                            <li>Real-time cloud resource discovery</li>
+                            <li>Multi-cloud resource inventory</li>
+                            <li>Security findings integration</li>
+                            <li>Resource utilization analytics</li>
+                        </ul>
+                        <a href="{{ url_for('version_selection') }}" class="upgrade-btn">
+                            <i class="fas fa-arrow-up"></i> Upgrade to Pro
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="cloud-explorer-dashboard">
+                <div class="explorer-header">
+                    <div class="header-title">
+                        <h2><i class="fas fa-search"></i> Cloud Resource Explorer</h2>
+                        <p>Discover and analyze resources across your cloud infrastructure</p>
+                    </div>
+                    <div class="explorer-stats">
+                        <div class="stat-item">
+                            <span class="stat-value" id="explorerTotalResources">--</span>
+                            <span class="stat-label">Total Resources</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="explorerActiveProviders">--</span>
+                            <span class="stat-label">Active Providers</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="explorerSecurityIssues">--</span>
+                            <span class="stat-label">Security Issues</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-value" id="explorerLastScan">--</span>
+                            <span class="stat-label">Last Discovery</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="explorer-controls">
+                    <div class="provider-tabs">
+                        <button class="provider-tab active" data-provider="all" onclick="switchProvider('all')">
+                            <i class="fas fa-globe"></i> All Providers
+                        </button>
+                        <button class="provider-tab" data-provider="aws" onclick="switchProvider('aws')">
+                            <i class="fab fa-aws"></i> AWS
+                        </button>
+                        <button class="provider-tab" data-provider="gcp" onclick="switchProvider('gcp')">
+                            <i class="fab fa-google"></i> GCP
+                        </button>
+                        <button class="provider-tab" data-provider="azure" onclick="switchProvider('azure')">
+                            <i class="fab fa-microsoft"></i> Azure
+                        </button>
+                    </div>
+                    <div class="view-controls">
+                        <button class="discover-btn" onclick="discoverResources()" id="discoverBtn">
+                            <i class="fas fa-search"></i> Discover Resources
+                        </button>
+                        <div class="filter-dropdown">
+                            <button class="filter-btn" onclick="toggleFilters()">
+                                <i class="fas fa-filter"></i> Filters
+                            </button>
+                            <div class="filter-menu" id="filterMenu" style="display: none;">
+                                <div class="filter-section">
+                                    <label>Resource Type</label>
+                                    <select id="resourceTypeFilter" onchange="applyFilters()">
+                                        <option value="all">All Types</option>
+                                        <option value="compute">Compute</option>
+                                        <option value="storage">Storage</option>
+                                        <option value="database">Database</option>
+                                        <option value="network">Network</option>
+                                        <option value="security">Security</option>
+                                    </select>
+                                </div>
+                                <div class="filter-section">
+                                    <label>Security Status</label>
+                                    <select id="securityStatusFilter" onchange="applyFilters()">
+                                        <option value="all">All Status</option>
+                                        <option value="secure">Secure</option>
+                                        <option value="warning">Warning</option>
+                                        <option value="critical">Critical</option>
+                                    </select>
+                                </div>
+                                <div class="filter-section">
+                                    <label>Region</label>
+                                    <select id="regionFilter" onchange="applyFilters()">
+                                        <option value="all">All Regions</option>
+                                        <option value="us-east-1">US East 1</option>
+                                        <option value="us-west-2">US West 2</option>
+                                        <option value="eu-west-1">EU West 1</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+                        <button class="export-btn" onclick="exportResourceData()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+
+                <div class="discovery-status" id="discoveryStatus" style="display: none;">
+                    <div class="status-content">
+                        <div class="status-icon">
+                            <div class="discovery-spinner">
+                                <i class="fas fa-search"></i>
+                            </div>
+                        </div>
+                        <div class="status-text">
+                            <h4>Discovering Resources...</h4>
+                            <p id="discoveryProgress">Scanning cloud providers for resources</p>
+                        </div>
+                    </div>
+                    <div class="discovery-progress-bar">
+                        <div class="progress-fill" id="discoveryProgressFill"></div>
+                    </div>
+                </div>
+
+                <div class="resource-grid" id="resourceGrid">
+                    <div class="empty-state" id="emptyState">
+                        <div class="empty-icon">
+                            <i class="fas fa-search"></i>
+                        </div>
+                        <h3>Start Resource Discovery</h3>
+                        <p>Click "Discover Resources" to scan your cloud infrastructure and find resources across all connected providers.</p>
+                        <button class="empty-action-btn" onclick="discoverResources()">
+                            <i class="fas fa-search"></i> Start Discovery
+                        </button>
+                    </div>
+                </div>
+
+                <div class="resource-details-modal" id="resourceDetailsModal" style="display: none;">
+                    <div class="modal-backdrop" onclick="closeResourceDetails()"></div>
+                    <div class="modal-content">
+                        <div class="modal-header">
+                            <h3 id="modalResourceTitle">Resource Details</h3>
+                            <button class="modal-close" onclick="closeResourceDetails()">
+                                <i class="fas fa-times"></i>
+                            </button>
+                        </div>
+                        <div class="modal-body" id="modalResourceBody">
+                            <!-- Dynamic content will be loaded here -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="performance-section" class="content-section" data-aos="fade-up">
+            {% if current_user.is_basic_user() %}
+            <div class="pro-feature-restriction">
+                <div class="restriction-content">
+                    <div class="restriction-icon">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="restriction-message">
+                        <h3>Performance Metrics - Pro Feature</h3>
+                        <p>Monitor and optimize your scan performance with advanced analytics. Pro features include:</p>
+                        <ul>
+                            <li>Real-time performance monitoring</li>
+                            <li>Historical scan performance trends</li>
+                            <li>Resource utilization metrics</li>
+                            <li>Performance optimization recommendations</li>
+                        </ul>
+                        <a href="{{ url_for('version_selection') }}" class="upgrade-btn">
+                            <i class="fas fa-arrow-up"></i> Upgrade to Pro
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="card">
+                <h2><i class="fas fa-chart-line"></i> Performance Metrics</h2>
+                <p>Monitor scan performance and operational metrics.</p>
+                
+                <div class="performance-metrics">
+                    <div class="performance-summary" id="performanceSummary">
+                        <div class="perf-metric">
+                            <span class="perf-value" id="avgScanTime">--</span>
+                            <span class="perf-label">Avg Scan Time (min)</span>
+                        </div>
+                        <div class="perf-metric">
+                            <span class="perf-value" id="totalScans">--</span>
+                            <span class="perf-label">Total Scans</span>
+                        </div>
+                        <div class="perf-metric">
+                            <span class="perf-value" id="avgResourcesPerScan">--</span>
+                            <span class="perf-label">Avg Resources/Scan</span>
+                        </div>
+                    </div>
+                    
+                    <div class="performance-chart-container">
+                        <canvas id="performanceChart"></canvas>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="automation-section" class="content-section" data-aos="fade-up">
+            {% if current_user.is_basic_user() %}
+            <div class="pro-feature-restriction">
+                <div class="restriction-content">
+                    <div class="restriction-icon">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="restriction-message">
+                        <h3>Automation Center - Pro Feature</h3>
+                        <p>Automate your security scanning and monitoring workflows. Pro features include:</p>
+                        <ul>
+                            <li>Scheduled automated scans</li>
+                            <li>Custom automation rules and triggers</li>
+                            <li>Background scan monitoring</li>
+                            <li>Automated report generation and delivery</li>
+                        </ul>
+                        <a href="{{ url_for('version_selection') }}" class="upgrade-btn">
+                            <i class="fas fa-arrow-up"></i> Upgrade to Pro
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="automation-dashboard-modern">
+                <div class="automation-header">
+                    <h2><i class="fas fa-robot animated-bounce"></i> Automation Center</h2>
+                    <div class="automation-status">
+                        <div class="status-indicator active">
+                            <span class="status-dot"></span>
+                            <span class="status-text">3 Active Jobs</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="automation-grid">
+                    <div class="automation-card background-scans">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <i class="fas fa-sync-alt"></i>
+                            </div>
+                            <div class="card-info">
+                                <h3>Background Scanning</h3>
+                                <span class="card-status running">Running</span>
+                            </div>
+                            <div class="card-actions">
+                                <button class="action-btn" onclick="loadBackgroundScanStatus()">
+                                    <i class="fas fa-refresh"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="scan-metrics">
+                                <div class="metric">
+                                    <span class="metric-value">1h 30m</span>
+                                    <span class="metric-label">Next Scan</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-value">156</span>
+                                    <span class="metric-label">Total Runs</span>
+                                </div>
+                                <div class="metric">
+                                    <span class="metric-value">99.2%</span>
+                                    <span class="metric-label">Success Rate</span>
+                                </div>
+                            </div>
+                            <div class="scan-progress">
+                                <div class="progress-info">
+                                    <span>AWS Production Environment</span>
+                                    <span class="progress-time">Every 2 hours</span>
+                                </div>
+                                <div class="progress-bar-modern">
+                                    <div class="progress-fill animated-progress" style="width: 75%"></div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn-modern primary" onclick="showBackgroundScanModal()">
+                                <i class="fas fa-play"></i> Configure
+                            </button>
+                            <button class="btn-modern secondary" onclick="showBackgroundScanSettingsModal()">
+                                <i class="fas fa-cog"></i> Settings
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="automation-card scheduled-scans">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <i class="fas fa-calendar-alt"></i>
+                            </div>
+                            <div class="card-info">
+                                <h3>Scheduled Scans</h3>
+                                <span class="card-status active">2 Scheduled</span>
+                            </div>
+                            <div class="card-actions">
+                                <button class="action-btn" onclick="schedulingManager.loadScheduledJobs()">
+                                    <i class="fas fa-sync-alt"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="scheduled-jobs-preview">
+                                <div class="job-item">
+                                    <div class="job-info">
+                                        <div class="job-name">Weekly Security Scan</div>
+                                        <div class="job-schedule">Every Monday at 02:00 AM</div>
+                                    </div>
+                                    <div class="job-status scheduled">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                </div>
+                                <div class="job-item">
+                                    <div class="job-info">
+                                        <div class="job-name">Monthly Compliance Check</div>
+                                        <div class="job-schedule">1st of every month</div>
+                                    </div>
+                                    <div class="job-status scheduled">
+                                        <i class="fas fa-clock"></i>
+                                    </div>
+                                </div>
+                                <div class="job-item upcoming">
+                                    <div class="job-info">
+                                        <div class="job-name">Next: Weekly Security Scan</div>
+                                        <div class="job-schedule">Tomorrow at 02:00 AM</div>
+                                    </div>
+                                    <div class="job-status next">
+                                        <i class="fas fa-play-circle"></i>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn-modern primary" onclick="showScheduleScanModal()">
+                                <i class="fas fa-calendar-plus"></i> New Schedule
+                            </button>
+                            <button class="btn-modern secondary" onclick="showAdvancedScheduleModal()">
+                                <i class="fas fa-stopwatch"></i> Advanced
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="automation-card automation-rules">
+                        <div class="card-header">
+                            <div class="card-icon">
+                                <i class="fas fa-magic"></i>
+                            </div>
+                            <div class="card-info">
+                                <h3>Automation Rules</h3>
+                                <span class="card-status active">5 Rules</span>
+                            </div>
+                            <div class="card-actions">
+                                <button class="action-btn" onclick="refreshAutomationRules()">
+                                    <i class="fas fa-refresh"></i>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="card-content">
+                            <div class="rules-preview">
+                                <div class="rule-item active">
+                                    <div class="rule-info">
+                                        <div class="rule-name">Auto-remediate S3 Public Access</div>
+                                        <div class="rule-description">Automatically fix public S3 buckets</div>
+                                    </div>
+                                    <div class="rule-toggle active">
+                                        <span class="toggle-slider"></span>
+                                    </div>
+                                </div>
+                                <div class="rule-item active">
+                                    <div class="rule-info">
+                                        <div class="rule-name">Critical Alert Notifications</div>
+                                        <div class="rule-description">Send Slack alerts for critical findings</div>
+                                    </div>
+                                    <div class="rule-toggle active">
+                                        <span class="toggle-slider"></span>
+                                    </div>
+                                </div>
+                                <div class="rule-item">
+                                    <div class="rule-info">
+                                        <div class="rule-name">Weekly Report Generation</div>
+                                        <div class="rule-description">Auto-generate weekly reports</div>
+                                    </div>
+                                    <div class="rule-toggle">
+                                        <span class="toggle-slider"></span>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="card-footer">
+                            <button class="btn-modern primary" onclick="showCreateRuleModal()">
+                                <i class="fas fa-plus"></i> Create Rule
+                            </button>
+                            <button class="btn-modern secondary" onclick="viewAllRules()">
+                                <i class="fas fa-list"></i> Manage
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="automation-timeline">
+                    <h3><i class="fas fa-history"></i> Recent Automation Activity</h3>
+                    <div class="timeline-modern">
+                        <div class="timeline-item success">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-header">
+                                    <span class="timeline-title">Background Scan Completed</span>
+                                    <span class="timeline-time">5 minutes ago</span>
+                                </div>
+                                <div class="timeline-description">Scanned 328 resources, found 12 issues</div>
+                            </div>
+                        </div>
+                        <div class="timeline-item info">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-header">
+                                    <span class="timeline-title">Auto-Remediation Triggered</span>
+                                    <span class="timeline-time">1 hour ago</span>
+                                </div>
+                                <div class="timeline-description">Fixed 3 S3 bucket public access issues</div>
+                            </div>
+                        </div>
+                        <div class="timeline-item warning">
+                            <div class="timeline-marker"></div>
+                            <div class="timeline-content">
+                                <div class="timeline-header">
+                                    <span class="timeline-title">Scheduled Scan Failed</span>
+                                    <span class="timeline-time">2 hours ago</span>
+                                </div>
+                                <div class="timeline-description">GCP credentials expired, retrying in 30 minutes</div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="history-section" class="content-section" data-aos="fade-up">
+            {% if current_user.is_basic_user() %}
+            <div class="pro-feature-restriction">
+                <div class="restriction-content">
+                    <div class="restriction-icon">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="restriction-message">
+                        <h3>Scan History - Pro Feature</h3>
+                        <p>Access detailed scan history and analytics with our Pro plan. Pro features include:</p>
+                        <ul>
+                            <li>Complete scan history and audit trails</li>
+                            <li>Historical trend analysis</li>
+                            <li>Scan comparison and diff reports</li>
+                            <li>Export capabilities for compliance</li>
+                        </ul>
+                        <a href="{{ url_for('version_selection') }}" class="upgrade-btn">
+                            <i class="fas fa-arrow-up"></i> Upgrade to Pro
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="scan-history-dashboard">
+                <div class="history-header">
+                    <div class="header-left">
+                        <h2><i class="fas fa-history animated-rotate"></i> Scan History</h2>
+                        <div class="history-stats">
+                            <div class="stat-item">
+                                <span class="stat-number">1,247</span>
+                                <span class="stat-label">Total Scans</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number">98.7%</span>
+                                <span class="stat-label">Success Rate</span>
+                            </div>
+                            <div class="stat-item">
+                                <span class="stat-number">2m 34s</span>
+                                <span class="stat-label">Avg Duration</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="header-right">
+                        <div class="history-controls">
+                            <select id="historyFilter" class="control-select" onchange="filterScanHistory()">
+                                <option value="all">All Time</option>
+                                <option value="7">Last 7 Days</option>
+                                <option value="30" selected>Last 30 Days</option>
+                                <option value="90">Last 90 Days</option>
+                            </select>
+                            <button class="control-btn" onclick="refreshScanHistory()" title="Refresh">
+                                <i class="fas fa-refresh"></i>
+                            </button>
+                            <button class="control-btn" onclick="shareScanResults()" title="Share">
+                                <i class="fas fa-share-alt"></i>
+                            </button>
+                            <button class="control-btn" onclick="exportScanHistory()" title="Export">
+                                <i class="fas fa-download"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="history-visualization">
+                    <div class="scan-timeline-modern">
+                        <div class="timeline-header">
+                            <h3><i class="fas fa-chart-line"></i> Scan Activity Overview</h3>
+                            <div class="timeline-period">
+                                <select class="timeline-filter">
+                                    <option value="7d">Last 7 Days</option>
+                                    <option value="30d" selected>Last 30 Days</option>
+                                    <option value="90d">Last 90 Days</option>
+                                </select>
+                            </div>
+                        </div>
+
+                        <div class="activity-metrics">
+                            <div class="metric-card">
+                                <div class="metric-icon success">
+                                    <i class="fas fa-check-circle"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-value">247</div>
+                                    <div class="metric-label">Successful Scans</div>
+                                    <div class="metric-trend positive">+12% vs last period</div>
+                                </div>
+                            </div>
+
+                            <div class="metric-card">
+                                <div class="metric-icon warning">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-value">23</div>
+                                    <div class="metric-label">With Issues</div>
+                                    <div class="metric-trend negative">-8% vs last period</div>
+                                </div>
+                            </div>
+
+                            <div class="metric-card">
+                                <div class="metric-icon error">
+                                    <i class="fas fa-times-circle"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-value">5</div>
+                                    <div class="metric-label">Failed</div>
+                                    <div class="metric-trend positive">-67% vs last period</div>
+                                </div>
+                            </div>
+
+                            <div class="metric-card">
+                                <div class="metric-icon info">
+                                    <i class="fas fa-clock"></i>
+                                </div>
+                                <div class="metric-content">
+                                    <div class="metric-value">2.4m</div>
+                                    <div class="metric-label">Avg Duration</div>
+                                    <div class="metric-trend positive">-15% vs last period</div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="activity-heatmap">
+                            <div class="heatmap-header">
+                                <span class="heatmap-title">Daily Activity Intensity</span>
+                                <div class="heatmap-scale">
+                                    <span>Less</span>
+                                    <div class="scale-squares">
+                                        <div class="scale-square level-0"></div>
+                                        <div class="scale-square level-1"></div>
+                                        <div class="scale-square level-2"></div>
+                                        <div class="scale-square level-3"></div>
+                                        <div class="scale-square level-4"></div>
+                                    </div>
+                                    <span>More</span>
+                                </div>
+                            </div>
+                            <div class="heatmap-grid">
+                                <!-- Week labels -->
+                                <div class="week-labels">
+                                    <div class="week-label"></div>
+                                    <div class="week-label">Mon</div>
+                                    <div class="week-label"></div>
+                                    <div class="week-label">Wed</div>
+                                    <div class="week-label"></div>
+                                    <div class="week-label">Fri</div>
+                                    <div class="week-label"></div>
+                                </div>
+
+                                <!-- Heatmap data container -->
+                                <div class="heatmap-container">
+                                    <!-- Month labels row -->
+                                    <div class="month-labels">
+                                        <div class="month-label">Jan</div>
+                                        <div class="month-label">Feb</div>
+                                        <div class="month-label">Mar</div>
+                                        <div class="month-label">Apr</div>
+                                        <div class="month-label">May</div>
+                                        <div class="month-label">Jun</div>
+                                        <div class="month-label">Jul</div>
+                                        <div class="month-label">Aug</div>
+                                        <div class="month-label">Sep</div>
+                                        <div class="month-label">Oct</div>
+                                        <div class="month-label">Nov</div>
+                                        <div class="month-label">Dec</div>
+                                    </div>
+
+                                    <!-- Heatmap grid -->
+                                    <div class="heatmap-days" id="activityHeatmap">
+                                        <!-- Will be populated by JavaScript -->
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="activity-summary">
+                            <div class="summary-item">
+                                <i class="fas fa-trophy text-warning"></i>
+                                <span>Peak day: <strong>Oct 24</strong> with 26 scans</span>
+                            </div>
+                            <div class="summary-item">
+                                <i class="fas fa-calendar-check text-success"></i>
+                                <span>Most active: <strong>Weekdays</strong> (avg 18 scans/day)</span>
+                            </div>
+                            <div class="summary-item">
+                                <i class="fas fa-chart-line text-info"></i>
+                                <span>Trend: <strong>Increasing</strong> (+23% this month)</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="history-list-modern">
+                    <div class="scan-item recent">
+                        <div class="scan-status success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="scan-info">
+                            <div class="scan-header">
+                                <h4>AWS Production Environment Scan</h4>
+                                <span class="scan-time">2 hours ago</span>
+                            </div>
+                            <div class="scan-details">
+                                <div class="detail-item">
+                                    <i class="fas fa-server"></i>
+                                    <span>328 Resources</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>12 Critical</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>2m 34s</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-user"></i>
+                                    <span>Admin User</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="scan-actions">
+                            <button class="scan-btn" onclick="viewScanDetails('scan_001')" title="View Details">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="scan-btn" onclick="downloadScanReport('scan_001')" title="Download Report">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="scan-btn" onclick="compareScan('scan_001')" title="Compare">
+                                <i class="fas fa-balance-scale"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="scan-item">
+                        <div class="scan-status warning">
+                            <i class="fas fa-exclamation-triangle"></i>
+                        </div>
+                        <div class="scan-info">
+                            <div class="scan-header">
+                                <h4>GCP Development Project Scan</h4>
+                                <span class="scan-time">1 day ago</span>
+                            </div>
+                            <div class="scan-details">
+                                <div class="detail-item">
+                                    <i class="fas fa-server"></i>
+                                    <span>156 Resources</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-exclamation-triangle"></i>
+                                    <span>28 Issues</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>1m 12s</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-robot"></i>
+                                    <span>Automated</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="scan-actions">
+                            <button class="scan-btn" onclick="viewScanDetails('scan_002')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="scan-btn" onclick="downloadScanReport('scan_002')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="scan-btn" onclick="compareScan('scan_002')">
+                                <i class="fas fa-balance-scale"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="scan-item">
+                        <div class="scan-status success">
+                            <i class="fas fa-check-circle"></i>
+                        </div>
+                        <div class="scan-info">
+                            <div class="scan-header">
+                                <h4>Azure Staging Environment Scan</h4>
+                                <span class="scan-time">2 days ago</span>
+                            </div>
+                            <div class="scan-details">
+                                <div class="detail-item">
+                                    <i class="fas fa-server"></i>
+                                    <span>89 Resources</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>All Clean</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>45s</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-calendar"></i>
+                                    <span>Scheduled</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="scan-actions">
+                            <button class="scan-btn" onclick="viewScanDetails('scan_003')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="scan-btn" onclick="downloadScanReport('scan_003')">
+                                <i class="fas fa-download"></i>
+                            </button>
+                            <button class="scan-btn" onclick="compareScan('scan_003')">
+                                <i class="fas fa-balance-scale"></i>
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="scan-item">
+                        <div class="scan-status error">
+                            <i class="fas fa-times-circle"></i>
+                        </div>
+                        <div class="scan-info">
+                            <div class="scan-header">
+                                <h4>Multi-Cloud Compliance Scan</h4>
+                                <span class="scan-time">3 days ago</span>
+                            </div>
+                            <div class="scan-details">
+                                <div class="detail-item">
+                                    <i class="fas fa-times-circle"></i>
+                                    <span>Failed</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-exclamation-circle"></i>
+                                    <span>Auth Error</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-clock"></i>
+                                    <span>12s</span>
+                                </div>
+                                <div class="detail-item">
+                                    <i class="fas fa-user"></i>
+                                    <span>Admin User</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="scan-actions">
+                            <button class="scan-btn" onclick="viewScanDetails('scan_004')">
+                                <i class="fas fa-eye"></i>
+                            </button>
+                            <button class="scan-btn" onclick="retryScan('scan_004')" title="Retry Scan">
+                                <i class="fas fa-redo"></i>
+                            </button>
+                            <button class="scan-btn" onclick="viewScanLogs('scan_004')" title="View Logs">
+                                <i class="fas fa-file-alt"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="load-more-container">
+                    <button class="load-more-btn" onclick="loadMoreHistory()">
+                        <i class="fas fa-chevron-down"></i>
+                        Load More History
+                    </button>
+                </div>
+            </div>
+            {% endif %}
+        </div>
+
+        <div id="reporting-section" class="content-section" data-aos="fade-up">
+            {% if current_user.is_basic_user() %}
+            <div class="pro-feature-restriction">
+                <div class="restriction-content">
+                    <div class="restriction-icon">
+                        <i class="fas fa-crown"></i>
+                    </div>
+                    <div class="restriction-message">
+                        <h3>Enterprise Hub - Pro Feature</h3>
+                        <p>Access advanced enterprise-grade security management tools. Pro features include:</p>
+                        <ul>
+                            <li>Threat intelligence integration</li>
+                            <li>SIEM integration and alerting</li>
+                            <li>Advanced reporting and analytics</li>
+                            <li>Executive dashboards and insights</li>
+                        </ul>
+                        <a href="{{ url_for('version_selection') }}" class="upgrade-btn">
+                            <i class="fas fa-arrow-up"></i> Upgrade to Pro
+                        </a>
+                    </div>
+                </div>
+            </div>
+            {% else %}
+            <div class="enterprise-hub-modern">
+                <div class="compliance-header">
+                    <div class="header-content">
+                        <h2><i class="fas fa-building"></i> Enterprise Command Center</h2>
+                        <p>Advanced security orchestration and automated response</p>
+                    </div>
+                    <div class="compliance-stats">
+                        <div class="stat-item">
+                            <span class="stat-number">7</span>
+                            <span class="stat-text">Active Modules</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number">99.8%</span>
+                            <span class="stat-text">Uptime</span>
+                        </div>
+                        <div class="stat-item">
+                            <span class="stat-number highlight">Real-time</span>
+                            <span class="stat-text">Monitoring</span>
+                        </div>
+                    </div>
+                    <div class="compliance-actions">
+                        <button class="action-btn secondary" onclick="refreshEnterpriseModules()">
+                            <i class="fas fa-sync-alt"></i> Refresh
+                        </button>
+                        <button class="action-btn primary" onclick="showEnterpriseSettings()">
+                            <i class="fas fa-cog"></i> Settings
+                        </button>
+                    </div>
+                </div>
+
+                <div class="enterprise-modules-grid">
+                    <div class="enterprise-module threat-intel" onclick="showEnterpriseModule('threatIntelModule')">
+                        <div class="module-header">
+                            <div class="module-icon">
+                                <i class="fas fa-shield-virus"></i>
+                                <div class="status-indicator active"></div>
+                            </div>
+                            <div class="module-info">
+                                <h3>Threat Intelligence</h3>
+                                <span class="module-status active">Active</span>
+                            </div>
+                        </div>
+                        <div class="module-content">
+                            <div class="module-description">Real-time threat detection and intelligence feeds</div>
+                            <div class="module-metrics">
+                                <div class="metric-row">
+                                    <div class="metric">
+                                        <i class="fas fa-exclamation-triangle"></i>
+                                        <span class="metric-value">47</span>
+                                        <span class="metric-label">Active Threats</span>
+                                    </div>
+                                    <div class="metric">
+                                        <i class="fas fa-shield-alt"></i>
+                                        <span class="metric-value">12</span>
+                                        <span class="metric-label">Blocked</span>
+                                    </div>
+                                </div>
+                                <div class="threat-activity">
+                                    <div class="activity-indicator high">High Activity</div>
+                                    <div class="activity-chart">
+                                        <div class="activity-bar" style="height: 60%"></div>
+                                        <div class="activity-bar" style="height: 80%"></div>
+                                        <div class="activity-bar" style="height: 45%"></div>
+                                        <div class="activity-bar" style="height: 90%"></div>
+                                        <div class="activity-bar" style="height: 70%"></div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="enterprise-module siem-integration" onclick="showEnterpriseModule('siemModule')">
+                        <div class="module-header">
+                            <div class="module-icon">
+                                <i class="fas fa-network-wired"></i>
+                                <div class="status-indicator active"></div>
+                            </div>
+                            <div class="module-info">
+                                <h3>SIEM Integration</h3>
+                                <span class="module-status active">Connected</span>
+                            </div>
+                        </div>
+                        <div class="module-content">
+                            <div class="module-description">Security Information and Event Management</div>
+                            <div class="integration-status">
+                                <div class="integration-item active">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Splunk Enterprise</span>
+                                </div>
+                                <div class="integration-item active">
+                                    <i class="fas fa-check-circle"></i>
+                                    <span>Elastic SIEM</span>
+                                </div>
+                                <div class="integration-item pending">
+                                    <i class="fas fa-clock"></i>
+                                    <span>QRadar (Pending)</span>
+                                </div>
+                            </div>
+                            <div class="data-flow">
+                                <span class="flow-label">Events/min:</span>
+                                <span class="flow-value">2,847</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="enterprise-module compliance-automation" onclick="showEnterpriseModule('complianceModule')">
+                        <div class="module-header">
+                            <div class="module-icon">
+                                <i class="fas fa-clipboard-check"></i>
+                                <div class="status-indicator partial"></div>
+                            </div>
+                            <div class="module-info">
+                                <h3>Compliance Engine</h3>
+                                <span class="module-status partial">87% Complete</span>
+                            </div>
+                        </div>
+                        <div class="module-content">
+                            <div class="module-description">Automated compliance monitoring and reporting</div>
+                            <div class="compliance-frameworks">
+                                <div class="framework-mini soc2-complete">
+                                    <span class="framework-name">SOC2</span>
+                                    <span class="framework-score">✓</span>
+                                </div>
+                                <div class="framework-mini iso-partial">
+                                    <span class="framework-name">ISO27001</span>
+                                    <span class="framework-score">78%</span>
+                                </div>
+                                <div class="framework-mini gdpr-attention">
+                                    <span class="framework-name">GDPR</span>
+                                    <span class="framework-score">65%</span>
+                                </div>
+                                <div class="framework-mini hipaa-complete">
+                                    <span class="framework-name">HIPAA</span>
+                                    <span class="framework-score">✓</span>
+                                </div>
+                            </div>
+                            <div class="next-audit">
+                                <i class="fas fa-calendar-alt"></i>
+                                <span>Next Audit: March 15, 2024</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="enterprise-module vulnerability-management" onclick="showEnterpriseModule('vulnModule')">
+                        <div class="module-header">
+                            <div class="module-icon">
+                                <i class="fas fa-bug"></i>
+                                <div class="status-indicator active"></div>
+                            </div>
+                            <div class="module-info">
+                                <h3>Vulnerability Management</h3>
+                                <span class="module-status active">Scanning</span>
+                            </div>
+                        </div>
+                        <div class="module-content">
+                            <div class="module-description">Continuous vulnerability assessment and remediation</div>
+                            <div class="vuln-summary">
+                                <div class="vuln-stat critical">
+                                    <span class="vuln-count">3</span>
+                                    <span class="vuln-label">Critical</span>
+                                </div>
+                                <div class="vuln-stat high">
+                                    <span class="vuln-count">15</span>
+                                    <span class="vuln-label">High</span>
+                                </div>
+                                <div class="vuln-stat medium">
+                                    <span class="vuln-count">42</span>
+                                    <span class="vuln-label">Medium</span>
+                                </div>
+                            </div>
+                            <div class="remediation-progress">
+                                <div class="progress-info">
+                                    <span>Auto-remediation: 78% complete</span>
+                                </div>
+                                <div class="progress-bar-mini">
+                                    <div class="progress-fill" style="width: 78%"></div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="enterprise-module incident-response" onclick="showEnterpriseModule('incidentModule')">
+                        <div class="module-header">
+                            <div class="module-icon">
+                                <i class="fas fa-exclamation-circle"></i>
+                                <div class="status-indicator warning"></div>
+                            </div>
+                            <div class="module-info">
+                                <h3>Incident Response</h3>
+                                <span class="module-status warning">2 Active</span>
+                            </div>
+                        </div>
+                        <div class="module-content">
+                            <div class="module-description">Automated incident detection and response workflows</div>
+                            <div class="active-incidents">
+                                <div class="incident-item high">
+                                    <i class="fas fa-fire"></i>
+                                    <div class="incident-info">
+                                        <span class="incident-title">Unauthorized Access Attempt</span>
+                                        <span class="incident-time">12 min ago</span>
+                                    </div>
+                                </div>
+                                <div class="incident-item medium">
+                                    <i class="fas fa-shield-alt"></i>
+                                    <div class="incident-info">
+                                        <span class="incident-title">Suspicious Network Activity</span>
+                                        <span class="incident-time">2 hrs ago</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="response-time">
+                                <span>Avg Response Time: 4.2 min</span>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="enterprise-module advanced-reporting" onclick="showEnterpriseModule('reportingModule')">
+                        <div class="module-header">
+                            <div class="module-icon">
+                                <i class="fas fa-chart-bar"></i>
+                                <div class="status-indicator active"></div>
+                            </div>
+                            <div class="module-info">
+                                <h3>Executive Reporting</h3>
+                                <span class="module-status active">Ready</span>
+                            </div>
+                        </div>
+                        <div class="module-content">
+                            <div class="module-description">C-level dashboards and executive summaries</div>
+                            <div class="report-types">
+                                <div class="report-type">
+                                    <i class="fas fa-file-pdf"></i>
+                                    <span>Executive Summary</span>
+                                </div>
+                                <div class="report-type">
+                                    <i class="fas fa-chart-line"></i>
+                                    <span>Risk Trends</span>
+                                </div>
+                                <div class="report-type">
+                                    <i class="fas fa-shield-check"></i>
+                                    <span>Compliance Status</span>
+                                </div>
+                            </div>
+                            <div class="next-report">
+                                <i class="fas fa-clock"></i>
+                                <span>Next Report: Tomorrow 8:00 AM</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="enterprise-actions-bar">
+                    <div class="actions-left">
+                        <button class="enterprise-btn primary" onclick="showEnterpriseOverview()">
+                            <i class="fas fa-tachometer-alt"></i>
+                            Executive Dashboard
+                        </button>
+                        <button class="enterprise-btn secondary" onclick="showEnterpriseAlerts()">
+                            <i class="fas fa-bell"></i>
+                            Security Alerts
+                            <span class="alert-badge">5</span>
+                        </button>
+                    </div>
+                    <div class="actions-right">
+                        <button class="enterprise-btn outline" onclick="generateExecutiveReport()">
+                            <i class="fas fa-file-alt"></i>
+                            Generate Report
+                        </button>
+                        <a href="/reports" class="enterprise-btn primary">
+                            <i class="fas fa-external-link-alt"></i>
+                            Advanced Reports
+                        </a>
+                    </div>
+                </div>
+
+                <!-- Module detail containers -->
+                <div id="threatIntelModule" class="enterprise-module-content">
+                    <div class="module-header">
+                        <h3><i class="fas fa-shield-virus"></i> Threat Intelligence Center</h3>
+                        <button class="retract-btn" onclick="hideEnterpriseModule('threatIntelModule')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="threatIntelContent">
+                        <div class="loading-state">
+                            <i class="fas fa-sync-alt fa-spin"></i>
+                            <p>Loading threat intelligence data...</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div id="complianceModule" class="enterprise-module-content">
+                    <div class="module-header">
+                        <h3><i class="fas fa-clipboard-check"></i> Compliance Automation</h3>
+                        <button class="retract-btn" onclick="hideEnterpriseModule('complianceModule')">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div id="complianceContent">
+                        <div class="loading-state">
+                            <i class="fas fa-sync-alt fa-spin"></i>
+                            <p>Loading compliance automation data...</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+            {% endif %}
+</div>
+
+<div id="finding-modal" class="modal-overlay">
+    <div class="modal-content card">
+        <span class="modal-close-btn">&times;</span>
+        <div id="modal-content-dynamic"></div>
+    </div>
+</div>
+
+<div id="scheduleScanModal" class="modal-overlay">
+    <div class="modal-content card">
+        <span class="modal-close-btn">&times;</span>
+        <h2><i class="fas fa-calendar-plus"></i> Standard Scan Schedule</h2>
+        
+        <div class="form-group">
+            <label for="modalProfileSelect">Credential Profile</label>
+            <select id="modalProfileSelect" class="form-control-filter">
+                <option value="">-- Select Profile --</option>
+                {% for credential in credentials %}
+                <option value="{{ credential.id }}">{{ credential.profile_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="scanScheduleType">Frequency</label>
+            <select id="scanScheduleType" class="form-control-filter">
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+            </select>
+        </div>
+        
+        <div class="modal-actions">
+            <button type="button" class="button-secondary" onclick="closeModal('scheduleScanModal')">
+                Cancel
+            </button>
+            <button type="button" class="button" onclick="confirmScheduleScan()">
+                Schedule Scan
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="advancedScheduleModal" class="modal-overlay">
+    <div class="modal-content card">
+        <span class="modal-close-btn">&times;</span>
+        <h2><i class="fas fa-stopwatch"></i> Advanced Scan Schedule</h2>
+        <p>Schedule a daily scan to run at a specific time.</p>
+        
+        <div class="form-group">
+            <label for="modalProfileSelectAdv">Credential Profile</label>
+            <select id="modalProfileSelectAdv" class="form-control-filter">
+                <option value="">-- Select Profile --</option>
+                {% for credential in credentials %}
+                <option value="{{ credential.id }}">{{ credential.profile_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="runTime">Time to run (24h format)</label>
+            <input type="time" id="runTime" class="form-control-filter" value="02:00">
+        </div>
+        
+        <div class="modal-actions">
+            <button type="button" class="button-secondary" onclick="closeModal('advancedScheduleModal')">
+                Cancel
+            </button>
+            <button type="button" class="button" onclick="confirmAdvancedSchedule()">
+                Save Schedule
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="emailReportModal" class="modal-overlay">
+    <div class="modal-content card">
+        <span class="modal-close-btn">&times;</span>
+        <h2><i class="fas fa-envelope"></i> Email Latest Report</h2>
+        <p>Send a PDF report of the last 30 days of scan results via email.</p>
+        
+        <div class="form-group">
+            <label for="emailRecipient">Recipient Email Address</label>
+            <input type="email" id="emailRecipient" class="form-control-filter" 
+                   placeholder="name@example.com" value="{{ current_user.email }}">
+        </div>
+        
+        <div class="modal-actions">
+            <button type="button" class="button-secondary" onclick="closeModal('emailReportModal')">
+                Cancel
+            </button>
+            <button type="button" class="button" id="sendEmailBtn" onclick="sendEmailReport()">
+                <i class="fas fa-paper-plane"></i> Send Email
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="backgroundScanModal" class="modal-overlay">
+    <div class="modal-content card">
+        <span class="modal-close-btn">&times;</span>
+        <h2><i class="fas fa-sync-alt"></i> Start Background Scanning</h2>
+        <p>Configure automatic background scans that run continuously.</p>
+        
+        <div class="form-group">
+            <label for="backgroundProfileSelect">Credential Profile</label>
+            <select id="backgroundProfileSelect" class="form-control-filter">
+                <option value="">-- Select Profile --</option>
+                {% for credential in credentials %}
+                <option value="{{ credential.id }}">{{ credential.profile_name }}</option>
+                {% endfor %}
+            </select>
+        </div>
+        
+        <div class="form-group">
+            <label for="backgroundInterval">Scan Interval</label>
+            <select id="backgroundInterval" class="form-control-filter">
+                <option value="15">Every 15 minutes</option>
+                <option value="30">Every 30 minutes</option>
+                <option value="60" selected>Every 1 hour</option>
+                <option value="120">Every 2 hours</option>
+                <option value="240">Every 4 hours</option>
+                <option value="480">Every 8 hours</option>
+                <option value="720">Every 12 hours</option>
+                <option value="1440">Every 24 hours</option>
+            </select>
+        </div>
+        
+        <div class="modal-actions">
+            <button type="button" class="button-secondary" onclick="closeModal('backgroundScanModal')">
+                Cancel
+            </button>
+            <button type="button" class="button" onclick="startBackgroundScan()">
+                <i class="fas fa-play"></i> Start Background Scan
+            </button>
+        </div>
+    </div>
+</div>
+
+<div id="backgroundScanSettingsModal" class="modal-overlay">
+    <div class="modal-content card">
+        <span class="modal-close-btn">&times;</span>
+        <h2><i class="fas fa-cog"></i> Background Scan Settings</h2>
+        <p>Configure advanced settings for background scanning.</p>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="notifyOnCritical" checked> 
+                Send notifications for critical findings
+            </label>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="autoGenerateReports"> 
+                Automatically generate weekly reports
+            </label>
+        </div>
+        
+        <div class="form-group">
+            <label>
+                <input type="checkbox" id="pauseOnError"> 
+                Pause scanning if errors occur
+            </label>
+        </div>
+        
+        <div class="form-group">
+            <label for="maxRetries">Maximum scan retries on failure</label>
+            <select id="maxRetries" class="form-control-filter">
+                <option value="1">1 retry</option>
+                <option value="2" selected>2 retries</option>
+                <option value="3">3 retries</option>
+                <option value="5">5 retries</option>
+            </select>
+        </div>
+        
+        <div class="modal-actions">
+            <button type="button" class="button-secondary" onclick="closeModal('backgroundScanSettingsModal')">
+                Cancel
+            </button>
+            <button type="button" class="button" onclick="saveBackgroundScanSettings()">
+                <i class="fas fa-save"></i> Save Settings
+            </button>
+        </div>
+    </div>
+</div>
+
+<script>
+// Share scan results functionality
+function shareScanResults() {
+    const modal = document.createElement('div');
+    modal.className = 'modal-overlay';
+    modal.style.display = 'flex';
+    modal.innerHTML = `
+        <div class="modal-content card">
+            <span class="modal-close-btn">&times;</span>
+            <h2><i class="fas fa-share-alt"></i> Share Scan Results</h2>
+            <p>Choose how you want to share your scan results:</p>
+            
+            <div class="share-options">
+                <button class="button share-button" data-action="email">
+                    <i class="fas fa-envelope"></i> Email Report
+                </button>
+                <button class="button share-button" data-action="link">
+                    <i class="fas fa-link"></i> Generate Shareable Link
+                </button>
+                <button class="button share-button" data-action="download">
+                    <i class="fas fa-download"></i> Download Report
+                </button>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="button-secondary close-modal-btn">
+                    Close
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(modal);
+    
+    // Add event listeners for proper event handling
+    const closeBtn = modal.querySelector('.modal-close-btn');
+    const closeButton = modal.querySelector('.close-modal-btn');
+    const shareButtons = modal.querySelectorAll('.share-button');
+    
+    // Close button functionality
+    if (closeBtn) {
+        closeBtn.addEventListener('click', closeShareModal);
+    }
+    if (closeButton) {
+        closeButton.addEventListener('click', closeShareModal);
+    }
+    
+    // Click outside to close
+    modal.addEventListener('click', function(e) {
+        if (e.target === modal) {
+            closeShareModal();
+        }
+    });
+    
+    // Share button functionality
+    shareButtons.forEach(button => {
+        button.addEventListener('click', function() {
+            const action = this.getAttribute('data-action');
+            switch(action) {
+                case 'email':
+                    shareViaEmail();
+                    break;
+                case 'link':
+                    generateShareableLink();
+                    break;
+                case 'download':
+                    downloadReport();
+                    break;
+            }
+        });
+    });
+    
+    // Add styles for share modal
+    if (!document.getElementById('share-modal-styles')) {
+        const style = document.createElement('style');
+        style.id = 'share-modal-styles';
+        style.textContent = `
+            .share-options {
+                display: flex;
+                flex-direction: column;
+                gap: 10px;
+                margin: 20px 0;
+            }
+            .share-button {
+                justify-content: flex-start;
+                gap: 10px;
+                padding: 12px 16px;
+                cursor: pointer;
+            }
+            .share-button i {
+                width: 20px;
+                text-align: center;
+            }
+            .modal-close-btn {
+                cursor: pointer;
+            }
+        `;
+        document.head.appendChild(style);
+    }
+}
+
+function closeShareModal() {
+    const modals = document.querySelectorAll('.modal-overlay');
+    modals.forEach(modal => {
+        if (modal && modal.parentNode) {
+            modal.parentNode.removeChild(modal);
+        }
+    });
+}
+
+function shareViaEmail() {
+    closeShareModal();
+    // Trigger the existing email report modal
+    const emailModal = document.getElementById('emailReportModal');
+    if (emailModal) {
+        emailModal.style.display = 'flex';
+    }
+}
+
+function generateShareableLink() {
+    // Generate a temporary shareable link
+    const shareData = {
+        timestamp: new Date().toISOString(),
+        userId: '{{ current_user.id if current_user.is_authenticated else "guest" }}',
+        type: 'scan_summary'
+    };
+    
+    // In a real implementation, this would call a backend endpoint
+    const shareableLink = `${window.location.origin}/shared-report/${btoa(JSON.stringify(shareData))}`;
+    
+    // Copy to clipboard
+    navigator.clipboard.writeText(shareableLink).then(() => {
+        showNotification('Shareable link copied to clipboard!', 'success');
+    }).catch(() => {
+        // Fallback for older browsers
+        const textArea = document.createElement('textarea');
+        textArea.value = shareableLink;
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showNotification('Shareable link copied to clipboard!', 'success');
+    });
+    
+    closeShareModal();
+}
+
+function downloadReport() {
+    closeShareModal();
+    showNotification('Report generation started...', 'info');
+    
+    // Get form data for report generation
+    const formData = new FormData();
+    formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+    formData.append('report_type', 'comprehensive');
+    formData.append('output_format', 'pdf');
+    formData.append('start_date', '');
+    formData.append('end_date', '');
+    formData.append('severities', JSON.stringify(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'OK']));
+    formData.append('services', 'all');
+    formData.append('include_remediation', 'on');
+    formData.append('include_compliance', 'on');
+    formData.append('include_costs', 'on');
+    
+    fetch('/api/v1/reports/generate', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        }
+        throw new Error('Report generation failed');
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `aegis_report_${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        showNotification('Report downloaded successfully!', 'success');
+    })
+    .catch(error => {
+        console.error('Report generation error:', error);
+        showNotification('Failed to generate report. Please try again.', 'error');
+    });
+}
+
+// Export scan history functionality
+function exportScanHistory() {
+    const exportModal = document.createElement('div');
+    exportModal.className = 'modal-overlay';
+    exportModal.style.display = 'flex';
+    exportModal.innerHTML = `
+        <div class="modal-content card">
+            <span class="modal-close-btn" onclick="closeExportModal()">&times;</span>
+            <h2><i class="fas fa-file-export"></i> Export Scan History</h2>
+            <p>Choose the export format for your scan history:</p>
+            
+            <div class="export-options">
+                <button class="button export-button" onclick="exportToCSV()">
+                    <i class="fas fa-file-csv"></i> Export as CSV
+                </button>
+                <button class="button export-button" onclick="exportToJSON()">
+                    <i class="fas fa-file-code"></i> Export as JSON
+                </button>
+                <button class="button export-button" onclick="exportToPDF()">
+                    <i class="fas fa-file-pdf"></i> Export as PDF
+                </button>
+            </div>
+            
+            <div class="form-group">
+                <label>
+                    <input type="checkbox" id="includeDetails" checked> 
+                    Include detailed findings
+                </label>
+            </div>
+            
+            <div class="form-group">
+                <label for="dateRange">Date Range:</label>
+                <select id="dateRange" class="form-control-filter">
+                    <option value="7">Last 7 days</option>
+                    <option value="30" selected>Last 30 days</option>
+                    <option value="90">Last 90 days</option>
+                    <option value="all">All time</option>
+                </select>
+            </div>
+            
+            <div class="modal-actions">
+                <button type="button" class="button-secondary" onclick="closeExportModal()">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    `;
+    document.body.appendChild(exportModal);
+    
+    // Add styles for export modal
+    const style = document.createElement('style');
+    style.textContent = `
+        .export-options {
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+            margin: 20px 0;
+        }
+        .export-button {
+            justify-content: flex-start;
+            gap: 10px;
+            padding: 12px 16px;
+        }
+        .export-button i {
+            width: 20px;
+            text-align: center;
+        }
+    `;
+    document.head.appendChild(style);
+}
+
+function closeExportModal() {
+    const modal = document.querySelector('.modal-overlay');
+    if (modal) {
+        document.body.removeChild(modal);
+    }
+}
+
+function exportToCSV() {
+    const includeDetails = document.getElementById('includeDetails').checked;
+    const dateRange = document.getElementById('dateRange').value;
+    
+    closeExportModal();
+    showNotification('CSV export started...', 'info');
+    
+    // Get form data for CSV export
+    const formData = new FormData();
+    formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+    formData.append('report_type', 'comprehensive');
+    formData.append('output_format', 'csv');
+    formData.append('start_date', '');
+    formData.append('end_date', '');
+    formData.append('severities', JSON.stringify(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'OK']));
+    formData.append('services', 'all');
+    formData.append('include_remediation', includeDetails ? 'on' : 'off');
+    formData.append('include_compliance', includeDetails ? 'on' : 'off');
+    formData.append('include_costs', includeDetails ? 'on' : 'off');
+    
+    fetch('/api/v1/reports/generate', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        }
+        throw new Error('CSV generation failed');
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `aegis-scan-history-${new Date().toISOString().split('T')[0]}.csv`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        showNotification('CSV export completed!', 'success');
+    })
+    .catch(error => {
+        console.error('CSV export error:', error);
+        showNotification('Failed to export CSV. Please try again.', 'error');
+    });
+}
+
+function exportToJSON() {
+    const includeDetails = document.getElementById('includeDetails').checked;
+    const dateRange = document.getElementById('dateRange').value;
+    
+    closeExportModal();
+    showNotification('JSON export started...', 'info');
+    
+    // Get form data for JSON export
+    const formData = new FormData();
+    formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+    formData.append('report_type', 'comprehensive');
+    formData.append('output_format', 'json');
+    formData.append('start_date', '');
+    formData.append('end_date', '');
+    formData.append('severities', JSON.stringify(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'OK']));
+    formData.append('services', 'all');
+    formData.append('include_remediation', includeDetails ? 'on' : 'off');
+    formData.append('include_compliance', includeDetails ? 'on' : 'off');
+    formData.append('include_costs', includeDetails ? 'on' : 'off');
+    
+    fetch('/api/v1/reports/generate', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.json();
+        }
+        throw new Error('JSON generation failed');
+    })
+    .then(data => {
+        const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `aegis-scan-history-${new Date().toISOString().split('T')[0]}.json`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        showNotification('JSON export completed!', 'success');
+    })
+    .catch(error => {
+        console.error('JSON export error:', error);
+        showNotification('Failed to export JSON. Please try again.', 'error');
+    });
+}
+
+function exportToPDF() {
+    const includeDetails = document.getElementById('includeDetails').checked;
+    const dateRange = document.getElementById('dateRange').value;
+    
+    closeExportModal();
+    showNotification('PDF export started...', 'info');
+    
+    // Get form data for PDF export
+    const formData = new FormData();
+    formData.append('csrf_token', document.querySelector('meta[name="csrf-token"]').getAttribute('content'));
+    formData.append('report_type', 'comprehensive');
+    formData.append('output_format', 'pdf');
+    formData.append('start_date', '');
+    formData.append('end_date', '');
+    formData.append('severities', JSON.stringify(['CRITICAL', 'HIGH', 'MEDIUM', 'LOW', 'OK']));
+    formData.append('services', 'all');
+    formData.append('include_remediation', includeDetails ? 'on' : 'off');
+    formData.append('include_compliance', includeDetails ? 'on' : 'off');
+    formData.append('include_costs', includeDetails ? 'on' : 'off');
+    
+    fetch('/api/v1/reports/generate', {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: formData
+    })
+    .then(response => {
+        if (response.ok) {
+            return response.blob();
+        }
+        throw new Error('PDF generation failed');
+    })
+    .then(blob => {
+        const url = window.URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.style.display = 'none';
+        a.href = url;
+        a.download = `aegis-scan-report-${new Date().toISOString().split('T')[0]}.pdf`;
+        document.body.appendChild(a);
+        a.click();
+        window.URL.revokeObjectURL(url);
+        showNotification('PDF export completed!', 'success');
+    })
+    .catch(error => {
+        console.error('PDF export error:', error);
+        showNotification('Failed to export PDF. Please try again.', 'error');
+    });
+}
+
+function generateCSVData(includeDetails, dateRange) {
+    // Sample CSV data - in real implementation, this would be fetched from backend
+    let csv = 'Date,Service,Resource,Status,Issue\n';
+    csv += '2024-01-15,EC2,i-1234567890abcdef0,CRITICAL,Instance has public IP with open security groups\n';
+    csv += '2024-01-15,S3,my-bucket,OK,Bucket is properly configured\n';
+    csv += '2024-01-14,IAM,user-john,CRITICAL,User has overly broad permissions\n';
+    return csv;
+}
+
+function generateJSONData(includeDetails, dateRange) {
+    // Sample JSON data - in real implementation, this would be fetched from backend
+    return {
+        exportDate: new Date().toISOString(),
+        dateRange: dateRange,
+        includeDetails: includeDetails,
+        scanHistory: [
+            {
+                date: '2024-01-15',
+                service: 'EC2',
+                resource: 'i-1234567890abcdef0',
+                status: 'CRITICAL',
+                issue: 'Instance has public IP with open security groups',
+                details: includeDetails ? { region: 'us-east-1', instanceType: 't2.micro' } : null
+            },
+            {
+                date: '2024-01-15',
+                service: 'S3',
+                resource: 'my-bucket',
+                status: 'OK',
+                issue: 'Bucket is properly configured',
+                details: includeDetails ? { region: 'us-east-1', encryption: 'enabled' } : null
+            }
+        ]
+    };
+}
+
+function downloadFile(content, mimeType, filename) {
+    const blob = new Blob([content], { type: mimeType });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+}
+
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 4px;
+        color: white;
+        font-weight: bold;
+        z-index: 4000;
+        transition: all 0.3s ease;
+        max-width: 300px;
+    `;
+    
+    // Set background color based on type
+    const colors = {
+        success: '#4CAF50',
+        error: '#D64550',
+        warning: '#FF9800',
+        info: '#2196F3'
+    };
+    notification.style.backgroundColor = colors[type] || colors.info;
+    
+    notification.textContent = message;
+    document.body.appendChild(notification);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+</script>
+{% endblock %}

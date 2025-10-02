@@ -1,0 +1,507 @@
+{% extends "auth_layout.html" %}
+{% block title %}2FA Recovery - Aegis{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-container">
+        <div class="recovery-header">
+            <div class="recovery-logo">
+                <svg class="animated-logo-recovery" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <filter id="recovery-gold-glow">
+                            <feGaussianBlur stdDeviation="1.2" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                        <filter id="recovery-green-glow">
+                            <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <circle class="recovery-ripple" cx="50" cy="50" r="0"/>
+                    <path class="recovery-shield glow" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z" filter="url(#recovery-gold-glow)"/>
+                    <polyline class="recovery-check glow" points="30,55 45,70 70,40" filter="url(#recovery-green-glow)"/>
+                    <path class="recovery-shield" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z"/>
+                    <polyline class="recovery-check" points="30,55 45,70 70,40"/>
+                </svg>
+            </div>
+            <h2>2FA Account Recovery</h2>
+            <p>Regain access to your account</p>
+        </div>
+        <div class="recovery-info">
+            <div class="info-card">
+                <i class="fas fa-info-circle info-icon"></i>
+                <div>
+                    <h6>Lost Your Authenticator Device?</h6>
+                    <p>If you can't access your authenticator app and don't have recovery codes, we can help you regain access to your account via your verified backup email.</p>
+                </div>
+            </div>
+            
+            <div class="warning-card">
+                <i class="fas fa-exclamation-triangle warning-icon"></i>
+                <div>
+                    <h6>Important: Backup Email Required</h6>
+                    <p>This recovery method only works if you have previously configured and verified a backup email address in your account settings. If you haven't set up a backup email, please contact your system administrator for manual account recovery.</p>
+                </div>
+            </div>
+        </div>
+
+        <form method="POST" action="{{ url_for('send_2fa_recovery') }}" class="recovery-form">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+            
+            <div class="form-group">
+                <label for="email" class="form-label">Your Account Email</label>
+                <div class="input-wrapper">
+                    <i class="fas fa-envelope input-icon"></i>
+                    <input type="email" class="form-control" id="email" name="email" required
+                           placeholder="Enter your account email address">
+                </div>
+                <small class="form-help">We'll send recovery instructions to your configured backup email address.</small>
+            </div>
+
+            <div class="security-requirements">
+                <h6><i class="fas fa-shield-alt"></i> Security Requirements</h6>
+                <ul>
+                    <li><i class="fas fa-check"></i> You must have a verified backup email configured</li>
+                    <li><i class="fas fa-clock"></i> Recovery link expires in 1 hour</li>
+                    <li><i class="fas fa-exclamation-triangle"></i> This will disable your current 2FA setup</li>
+                    <li><i class="fas fa-refresh"></i> You'll need to set up 2FA again after recovery</li>
+                </ul>
+            </div>
+
+            <div class="form-actions">
+                <button type="submit" class="btn btn-primary" id="recoveryBtn">
+                    <i class="fas fa-key"></i> Send Secure Recovery Link
+                </button>
+                <a href="{{ url_for('auth') }}" class="btn btn-secondary">
+                    <i class="fas fa-arrow-left"></i> Back to Login
+                </a>
+            </div>
+            
+            <div id="recoveryStatus" class="recovery-status" style="display: none;">
+                <div class="status-message">
+                    <i class="fas fa-envelope"></i>
+                    <div>
+                        <h6>Recovery Email Sent!</h6>
+                        <p id="statusText">Recovery instructions will be sent to your registered email and backup email (if configured).</p>
+                    </div>
+                </div>
+            </div>
+        </form>
+
+        <div class="alternative-methods">
+            <h6>Alternative Recovery Methods</h6>
+            
+            <div class="method-card">
+                <i class="fas fa-key method-icon"></i>
+                <div>
+                    <strong>Recovery Codes</strong>
+                    <p>If you have backup recovery codes saved, you can <a href="{{ url_for('auth') }}">use them to log in</a> instead.</p>
+                </div>
+            </div>
+            
+            <div class="help-card">
+                <i class="fas fa-question-circle help-icon"></i>
+                <div>
+                    <strong>Need Help?</strong>
+                    <p>If you don't have access to your backup email, please contact your system administrator.</p>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.recovery-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.recovery-logo {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 1rem auto;
+    position: relative;
+}
+
+.animated-logo-recovery {
+    width: 60px;
+    height: 60px;
+    position: relative;
+    z-index: 2;
+}
+
+.recovery-shield {
+    fill: none;
+    stroke: var(--primary-color);
+    stroke-width: 3;
+    stroke-dasharray: 400;
+    stroke-dashoffset: 400;
+    animation: recovery-draw-shield 1s ease-out 0.2s forwards;
+}
+
+.recovery-ripple {
+    fill: var(--primary-color);
+    opacity: 0;
+    animation: recovery-ripple-effect 0.8s ease-out 1s forwards;
+}
+
+.recovery-check {
+    fill: none;
+    stroke: var(--success-color);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: recovery-draw-check 0.5s ease-out 1.2s forwards;
+}
+
+.glow {
+    opacity: 0;
+    animation: recovery-pulse-glow 1.5s ease-in-out infinite alternate 1.8s;
+}
+
+@keyframes recovery-draw-shield { 
+    to { stroke-dashoffset: 0; } 
+}
+
+@keyframes recovery-ripple-effect {
+    0% { r: 0; opacity: 0.3; }
+    90% { r: 20; opacity: 0.1; }
+    100% { r: 25; opacity: 0; }
+}
+
+@keyframes recovery-draw-check { 
+    to { stroke-dashoffset: 0; } 
+}
+
+@keyframes recovery-pulse-glow {
+    from { opacity: 0.1; }
+    to { opacity: 0.4; }
+}
+
+.recovery-header h2 {
+    color: var(--dark-grey);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.recovery-header p {
+    color: var(--medium-grey);
+    margin: 0;
+}
+
+.recovery-info {
+    margin-bottom: 2rem;
+}
+
+.info-card, .warning-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    border-left: 4px solid;
+}
+
+.info-card {
+    background: #e3f2fd;
+    border-left-color: var(--info-color);
+}
+
+.warning-card {
+    background: #fff3e0;
+    border-left-color: var(--warning-color);
+}
+
+.info-icon {
+    color: var(--info-color);
+    font-size: 1.2rem;
+    margin-top: 0.2rem;
+}
+
+.warning-icon {
+    color: var(--warning-color);
+    font-size: 1.2rem;
+    margin-top: 0.2rem;
+}
+
+.info-card h6, .warning-card h6 {
+    margin: 0 0 0.5rem 0;
+    color: var(--dark-grey);
+    font-weight: 600;
+}
+
+.info-card p, .warning-card p {
+    margin: 0;
+    color: var(--dark-grey);
+    font-size: 0.9rem;
+}
+
+.recovery-form {
+    margin-bottom: 2rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.form-label {
+    display: block;
+    margin-bottom: 0.5rem;
+    color: var(--dark-grey);
+    font-weight: 500;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--medium-grey);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: var(--transition-speed);
+    background: white;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 168, 150, 0.1);
+}
+
+.form-help {
+    display: block;
+    margin-top: 0.5rem;
+    color: var(--medium-grey);
+    font-size: 0.85rem;
+}
+
+.security-requirements {
+    background: #f8f9fa;
+    padding: 1rem;
+    border-radius: var(--border-radius);
+    margin-bottom: 1.5rem;
+    border: 1px solid var(--border-color);
+}
+
+.security-requirements h6 {
+    margin: 0 0 0.75rem 0;
+    color: var(--dark-grey);
+    font-weight: 600;
+}
+
+.security-requirements h6 i {
+    color: var(--primary-color);
+    margin-right: 0.5rem;
+}
+
+.security-requirements ul {
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.security-requirements li {
+    padding: 0.25rem 0;
+    color: var(--dark-grey);
+    font-size: 0.9rem;
+}
+
+.security-requirements li i {
+    margin-right: 0.5rem;
+    color: var(--primary-color);
+    width: 14px;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition-speed);
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: white;
+    color: var(--medium-grey);
+    border: 2px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--light-grey);
+    color: var(--dark-grey);
+}
+
+.alternative-methods {
+    border-top: 1px solid var(--border-color);
+    padding-top: 1.5rem;
+}
+
+.alternative-methods h6 {
+    text-align: center;
+    margin-bottom: 1rem;
+    color: var(--dark-grey);
+    font-weight: 600;
+}
+
+.method-card, .help-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: var(--light-grey);
+    border-radius: var(--border-radius);
+    margin-bottom: 1rem;
+    border: 1px solid var(--border-color);
+}
+
+.method-icon, .help-icon {
+    color: var(--primary-color);
+    font-size: 1.2rem;
+    margin-top: 0.2rem;
+}
+
+.method-card strong, .help-card strong {
+    display: block;
+    margin-bottom: 0.25rem;
+    color: var(--dark-grey);
+    font-weight: 600;
+}
+
+.method-card p, .help-card p {
+    margin: 0;
+    color: var(--dark-grey);
+    font-size: 0.9rem;
+}
+
+.method-card a, .help-card a {
+    color: var(--primary-color);
+    text-decoration: none;
+}
+
+.method-card a:hover, .help-card a:hover {
+    text-decoration: underline;
+}
+
+@keyframes pulse {
+    0%, 100% { transform: scale(1); }
+    50% { transform: scale(1.05); }
+}
+
+.recovery-status.success {
+    background: #d4edda;
+    border-left-color: var(--success-color);
+    color: var(--dark-grey);
+}
+
+.recovery-status.error {
+    background: #f8d7da;
+    border-left-color: var(--error-color);
+    color: var(--dark-grey);
+}
+
+.recovery-status .status-message i {
+    margin-right: 0.5rem;
+}
+</style>
+
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    const form = document.querySelector('.recovery-form');
+    const recoveryBtn = document.getElementById('recoveryBtn');
+    const recoveryStatus = document.getElementById('recoveryStatus');
+    const statusText = document.getElementById('statusText');
+    
+    form.addEventListener('submit', function(e) {
+        e.preventDefault();
+        
+        const formData = new FormData(form);
+        const email = formData.get('email');
+        
+        if (!email || !email.trim()) {
+            alert('Please enter your email address.');
+            return;
+        }
+        
+        // Disable button and show loading
+        recoveryBtn.disabled = true;
+        recoveryBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Sending Recovery Link...';
+        
+        fetch(form.action, {
+            method: 'POST',
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            // Show status message
+            statusText.textContent = data.message;
+            recoveryStatus.style.display = 'block';
+            
+            if (data.success) {
+                recoveryStatus.className = 'recovery-status success';
+                statusText.innerHTML = '<i class="fas fa-check-circle"></i> ' + data.message;
+                form.reset();
+            } else {
+                recoveryStatus.className = 'recovery-status error';
+                statusText.innerHTML = '<i class="fas fa-exclamation-triangle"></i> ' + data.message;
+            }
+            
+            // Scroll to status message
+            recoveryStatus.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+        })
+        .catch(error => {
+            console.error('Error:', error);
+            statusText.textContent = 'An error occurred. Please try again later.';
+            recoveryStatus.className = 'recovery-status error';
+            recoveryStatus.style.display = 'block';
+        })
+        .finally(() => {
+            // Re-enable button
+            recoveryBtn.disabled = false;
+            recoveryBtn.innerHTML = '<i class="fas fa-key"></i> Send Secure Recovery Link';
+        });
+    });
+});
+</script>
+{% endblock %}

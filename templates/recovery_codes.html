@@ -1,0 +1,147 @@
+{% extends "layout.html" %}
+{% block title %}Recovery Codes - Aegis{% endblock %}
+
+{% block content %}
+<div class="container mt-4">
+    <div class="row justify-content-center">
+        <div class="col-md-8">
+            <div class="card border-warning">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0"><i class="fas fa-key"></i> Backup Recovery Codes</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-danger">
+                        <h5><i class="fas fa-exclamation-triangle"></i> Important Security Information</h5>
+                        <ul class="mb-0">
+                            <li><strong>Save these codes securely</strong> - They are your backup access to your account</li>
+                            <li><strong>Each code can only be used once</strong> - Mark them off when used</li>
+                            <li><strong>Keep them offline</strong> - Store in a password manager or secure location</li>
+                            <li><strong>Don't share them</strong> - Anyone with these codes can access your account</li>
+                        </ul>
+                    </div>
+
+                    <div class="recovery-codes-container mb-4">
+                        <h5>Your Recovery Codes:</h5>
+                        <div class="row">
+                            {% for code in recovery_codes %}
+                            <div class="col-md-6 mb-2">
+                                <div class="recovery-code-item p-3 bg-light border rounded">
+                                    <code class="h5 text-dark">{{ code }}</code>
+                                </div>
+                            </div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="recovery-actions">
+                        <button class="btn btn-primary me-2" onclick="printRecoveryCodes()">
+                            <i class="fas fa-print"></i> Print Codes
+                        </button>
+                        <button class="btn btn-secondary me-2" onclick="downloadRecoveryCodes()">
+                            <i class="fas fa-download"></i> Download as Text
+                        </button>
+                        <a href="{{ url_for('dashboard') }}" class="btn btn-success">
+                            <i class="fas fa-check"></i> I've Saved My Codes - Continue
+                        </a>
+                    </div>
+
+                    <div class="mt-4">
+                        <h6>How to use recovery codes:</h6>
+                        <ol>
+                            <li>When logging in, if you can't access your authenticator app, click "Use Recovery Code"</li>
+                            <li>Enter one of these 8-digit codes instead of your 6-digit authenticator code</li>
+                            <li>Each code works only once, so cross it off your list when used</li>
+                            <li>Generate new codes when you have few remaining</li>
+                        </ol>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+.recovery-code-item {
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    text-align: center;
+    transition: all 0.2s;
+}
+.recovery-code-item:hover {
+    background-color: #e9ecef !important;
+    transform: translateY(-1px);
+}
+.recovery-codes-container {
+    background: white;
+    border: 2px solid #ffc107;
+    border-radius: 10px;
+    padding: 20px;
+}
+</style>
+
+<script>
+function printRecoveryCodes() {
+    const codes = [{% for code in recovery_codes %}'{{ code }}'{{ ',' if not loop.last }}{% endfor %}];
+    const printContent = `
+        <div style="font-family: Arial, sans-serif; padding: 20px;">
+            <h2>Aegis Security Scanner - Backup Recovery Codes</h2>
+            <p><strong>Account:</strong> {{ current_user.email }}</p>
+            <p><strong>Generated:</strong> ${new Date().toLocaleString()}</p>
+            
+            <div style="background: #fff3cd; padding: 15px; border: 1px solid #ffeaa7; border-radius: 5px; margin: 20px 0;">
+                <strong>⚠️ Security Warning:</strong><br>
+                • Each code can only be used once<br>
+                • Keep these codes secure and offline<br>
+                • Don't share with anyone
+            </div>
+            
+            <h3>Recovery Codes:</h3>
+            <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; font-family: monospace; font-size: 16px;">
+                ${codes.map((code, i) => 
+                    '<div style="border: 1px solid #ddd; padding: 10px; text-align: center;">' + 
+                    '<span style="color: #666;">0' + (i+1) + ':</span> <strong>' + code + '</strong>' +
+                    '</div>'
+                ).join('')}
+            </div>
+            
+            <p style="margin-top: 30px; font-size: 12px; color: #666;">
+                Generated by Aegis Security Scanner<br>
+                Keep this document secure - it provides backup access to your account
+            </p>
+        </div>
+    `;
+    
+    const printWindow = window.open('', '_blank');
+    printWindow.document.write(printContent);
+    printWindow.document.close();
+    printWindow.print();
+}
+
+function downloadRecoveryCodes() {
+    const codes = [{% for code in recovery_codes %}'{{ code }}'{{ ',' if not loop.last }}{% endfor %}];
+    const content = `Aegis Security Scanner - Backup Recovery Codes
+Account: {{ current_user.email }}
+Generated: ${new Date().toLocaleString()}
+
+⚠️ SECURITY WARNING:
+- Each code can only be used once
+- Keep these codes secure and offline
+- Don't share with anyone
+
+Recovery Codes:
+${codes.map((code, i) => `${String(i+1).padStart(2, '0')}: ${code}`).join('\n')}
+
+Keep this file secure - it provides backup access to your account.
+`;
+    
+    const blob = new Blob([content], { type: 'text/plain' });
+    const url = window.URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'aegis_recovery_codes_' + new Date().toISOString().split('T')[0] + '.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    window.URL.revokeObjectURL(url);
+}
+</script>
+{% endblock %}

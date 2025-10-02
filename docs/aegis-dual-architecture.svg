@@ -1,0 +1,314 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1600 1000" style="background: #ffffff;">
+  <defs>
+    <style>
+      .title { font: bold 20px Arial; fill: #232f3e; text-anchor: middle; }
+      .subtitle { font: 12px Arial; fill: #546e7a; text-anchor: middle; }
+      .service-name { font: bold 11px Arial; fill: #232f3e; text-anchor: middle; }
+      .service-desc { font: 9px Arial; fill: #546e7a; text-anchor: middle; }
+      .zone-title { font: bold 14px Arial; fill: #232f3e; }
+      .deployment-title { font: bold 16px Arial; fill: #ffffff; text-anchor: middle; }
+      .flow-text { font: 8px Arial; fill: #666; text-anchor: middle; }
+      .cloud-border { fill: none; stroke: #2196f3; stroke-width: 3; stroke-dasharray: 10,5; }
+      .local-border { fill: none; stroke: #4caf50; stroke-width: 3; stroke-dasharray: 10,5; }
+      .zone-border { fill: none; stroke: #ff9800; stroke-width: 1; stroke-dasharray: 4,2; }
+    </style>
+    <marker id="arrow" markerWidth="8" markerHeight="8" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#333"/>
+    </marker>
+    <marker id="cloud-arrow" markerWidth="8" markerHeight="8" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#2196f3"/>
+    </marker>
+    <marker id="local-arrow" markerWidth="8" markerHeight="8" refX="8" refY="3" orient="auto" markerUnits="strokeWidth">
+      <path d="M0,0 L0,6 L9,3 z" fill="#4caf50"/>
+    </marker>
+  </defs>
+
+  <!-- Title -->
+  <text x="800" y="30" class="title">Aegis Cloud Scanner - Dual Production Architecture</text>
+  <text x="800" y="50" class="subtitle">Cloud Web Application &amp; Desktop EXE Application</text>
+
+  <!-- User Access -->
+  <rect x="50" y="80" width="1500" height="80" fill="#f5f5f5" stroke="#ddd" stroke-width="1" rx="5"/>
+  <text x="60" y="100" class="zone-title">User Access Layer</text>
+
+  <!-- Users -->
+  <rect x="100" y="110" width="80" height="40" fill="#607d8b" rx="5"/>
+  <text x="140" y="125" class="service-name" style="fill: white;">Users</text>
+  <text x="140" y="135" class="service-desc" style="fill: white;">Web Browsers</text>
+
+  <!-- Choice Arrow -->
+  <path d="M 180,130 L 250,130 L 250,100 L 280,130 L 250,160 L 250,130" stroke="#333" stroke-width="2" fill="none"/>
+  <text x="220" y="120" class="flow-text">Choose Deployment</text>
+
+  <!-- CLOUD DEPLOYMENT SECTION -->
+  <rect x="50" y="180" width="750" height="750" class="cloud-border" rx="15"/>
+  <rect x="50" y="180" width="750" height="50" fill="#2196f3" rx="15"/>
+  <text x="425" y="210" class="deployment-title">CLOUD WEB APPLICATION</text>
+
+  <!-- Cloud Internet Layer -->
+  <rect x="70" y="250" width="710" height="80" fill="#e3f2fd" stroke="#2196f3" stroke-width="1" rx="5"/>
+  <text x="80" y="270" class="zone-title">Internet &amp; DNS Layer</text>
+
+  <!-- DNS -->
+  <rect x="100" y="280" width="100" height="40" fill="#2196f3" rx="5"/>
+  <text x="150" y="295" class="service-name" style="fill: white;">Namecheap DNS</text>
+  <text x="150" y="305" class="service-desc" style="fill: white;">aegis-scanner.ink</text>
+
+  <!-- SSL -->
+  <rect x="220" y="280" width="120" height="40" fill="#ff9800" rx="5"/>
+  <text x="280" y="295" class="service-name" style="fill: white;">Let's Encrypt SSL</text>
+  <text x="280" y="305" class="service-desc" style="fill: white;">Auto Renewal</text>
+
+  <!-- AWS Lightsail -->
+  <rect x="360" y="280" width="140" height="40" fill="#ff5722" rx="5"/>
+  <text x="430" y="295" class="service-name" style="fill: white;">AWS Lightsail</text>
+  <text x="430" y="305" class="service-desc" style="fill: white;">52.66.204.123</text>
+
+  <!-- Cloud Web Layer -->
+  <rect x="70" y="350" width="710" height="100" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1" rx="5"/>
+  <text x="80" y="370" class="zone-title">Web &amp; Proxy Layer</text>
+
+  <!-- Nginx -->
+  <rect x="100" y="380" width="100" height="60" fill="#4caf50" rx="5"/>
+  <text x="150" y="400" class="service-name" style="fill: white;">Nginx</text>
+  <text x="150" y="410" class="service-desc" style="fill: white;">Reverse Proxy</text>
+  <text x="150" y="420" class="service-desc" style="fill: white;">Load Balancer</text>
+
+  <!-- Landing Page -->
+  <rect x="220" y="380" width="120" height="60" fill="#9c27b0" rx="5"/>
+  <text x="280" y="400" class="service-name" style="fill: white;">Landing Page</text>
+  <text x="280" y="410" class="service-desc" style="fill: white;">Aegis Basic</text>
+  <text x="280" y="420" class="service-desc" style="fill: white;">Aegis Advanced</text>
+
+  <!-- SystemD -->
+  <rect x="360" y="380" width="100" height="60" fill="#795548" rx="5"/>
+  <text x="410" y="400" class="service-name" style="fill: white;">SystemD</text>
+  <text x="410" y="410" class="service-desc" style="fill: white;">Service Mgmt</text>
+  <text x="410" y="420" class="service-desc" style="fill: white;">Auto Restart</text>
+
+  <!-- Cloud App Layer -->
+  <rect x="70" y="470" width="710" height="180" fill="#fff3e0" stroke="#ff9800" stroke-width="1" rx="5"/>
+  <text x="80" y="490" class="zone-title">Application Layer (Ubuntu 22.04)</text>
+
+  <!-- Gunicorn -->
+  <rect x="100" y="510" width="100" height="60" fill="#4caf50" rx="5"/>
+  <text x="150" y="530" class="service-name" style="fill: white;">Gunicorn</text>
+  <text x="150" y="540" class="service-desc" style="fill: white;">WSGI Server</text>
+  <text x="150" y="550" class="service-desc" style="fill: white;">3 Workers</text>
+
+  <!-- Flask App -->
+  <rect x="220" y="510" width="100" height="60" fill="#e91e63" rx="5"/>
+  <text x="270" y="530" class="service-name" style="fill: white;">Flask App</text>
+  <text x="270" y="540" class="service-desc" style="fill: white;">Aegis Scanner</text>
+  <text x="270" y="550" class="service-desc" style="fill: white;">Web Dashboard</text>
+
+  <!-- Scanner Engine -->
+  <rect x="340" y="510" width="110" height="60" fill="#3f51b5" rx="5"/>
+  <text x="395" y="530" class="service-name" style="fill: white;">Scanner Engine</text>
+  <text x="395" y="540" class="service-desc" style="fill: white;">Multi-Cloud</text>
+  <text x="395" y="550" class="service-desc" style="fill: white;">Parallel Scans</text>
+
+  <!-- Auth System -->
+  <rect x="470" y="510" width="100" height="60" fill="#ff5722" rx="5"/>
+  <text x="520" y="530" class="service-name" style="fill: white;">Auth System</text>
+  <text x="520" y="540" class="service-desc" style="fill: white;">2FA Enabled</text>
+  <text x="520" y="550" class="service-desc" style="fill: white;">Session Mgmt</text>
+
+  <!-- Reports -->
+  <rect x="590" y="510" width="100" height="60" fill="#607d8b" rx="5"/>
+  <text x="640" y="530" class="service-name" style="fill: white;">Reports</text>
+  <text x="640" y="540" class="service-desc" style="fill: white;">PDF/CSV</text>
+  <text x="640" y="550" class="service-desc" style="fill: white;">Email Delivery</text>
+
+  <!-- AI Integration -->
+  <rect x="100" y="580" width="100" height="60" fill="#795548" rx="5"/>
+  <text x="150" y="600" class="service-name" style="fill: white;">AI Analysis</text>
+  <text x="150" y="610" class="service-desc" style="fill: white;">Google Gemini</text>
+  <text x="150" y="620" class="service-desc" style="fill: white;">Risk Insights</text>
+
+  <!-- Security Manager -->
+  <rect x="220" y="580" width="100" height="60" fill="#f44336" rx="5"/>
+  <text x="270" y="600" class="service-name" style="fill: white;">Security Mgr</text>
+  <text x="270" y="610" class="service-desc" style="fill: white;">Encryption</text>
+  <text x="270" y="620" class="service-desc" style="fill: white;">Key Mgmt</text>
+
+  <!-- Logging -->
+  <rect x="340" y="580" width="100" height="60" fill="#009688" rx="5"/>
+  <text x="390" y="600" class="service-name" style="fill: white;">Logging</text>
+  <text x="390" y="610" class="service-desc" style="fill: white;">Structured</text>
+  <text x="390" y="620" class="service-desc" style="fill: white;">Audit Trail</text>
+
+  <!-- Database -->
+  <rect x="470" y="580" width="100" height="60" fill="#4caf50" rx="5"/>
+  <text x="520" y="600" class="service-name" style="fill: white;">SQLite DB</text>
+  <text x="520" y="610" class="service-desc" style="fill: white;">SQLAlchemy</text>
+  <text x="520" y="620" class="service-desc" style="fill: white;">PostgreSQL</text>
+
+  <!-- File Storage -->
+  <rect x="590" y="580" width="100" height="60" fill="#ff9800" rx="5"/>
+  <text x="640" y="600" class="service-name" style="fill: white;">File Storage</text>
+  <text x="640" y="610" class="service-desc" style="fill: white;">Reports</text>
+  <text x="640" y="620" class="service-desc" style="fill: white;">Assets</text>
+
+  <!-- Cloud External Services -->
+  <rect x="70" y="670" width="710" height="120" fill="#e8f5e8" stroke="#4caf50" stroke-width="1" rx="5"/>
+  <text x="80" y="690" class="zone-title">External Cloud Services</text>
+
+  <!-- AWS -->
+  <rect x="100" y="710" width="120" height="50" fill="#ff9800" rx="5"/>
+  <text x="160" y="730" class="service-name" style="fill: white;">AWS Services</text>
+  <text x="160" y="740" class="service-desc" style="fill: white;">EC2, S3, IAM, RDS</text>
+
+  <!-- Azure -->
+  <rect x="240" y="710" width="120" height="50" fill="#2196f3" rx="5"/>
+  <text x="300" y="730" class="service-name" style="fill: white;">Azure Services</text>
+  <text x="300" y="740" class="service-desc" style="fill: white;">VMs, Storage, AD</text>
+
+  <!-- GCP -->
+  <rect x="380" y="710" width="120" height="50" fill="#4caf50" rx="5"/>
+  <text x="440" y="730" class="service-name" style="fill: white;">GCP Services</text>
+  <text x="440" y="740" class="service-desc" style="fill: white;">Compute, IAM</text>
+
+  <!-- Email -->
+  <rect x="520" y="710" width="120" height="50" fill="#795548" rx="5"/>
+  <text x="580" y="730" class="service-name" style="fill: white;">Email/SMTP</text>
+  <text x="580" y="740" class="service-desc" style="fill: white;">Gmail, Reports</text>
+
+  <!-- LOCAL DEPLOYMENT SECTION -->
+  <rect x="850" y="180" width="700" height="750" class="local-border" rx="15"/>
+  <rect x="850" y="180" width="700" height="50" fill="#4caf50" rx="15"/>
+  <text x="1200" y="210" class="deployment-title">DESKTOP EXE APPLICATION</text>
+
+  <!-- Desktop Runtime Layer -->
+  <rect x="870" y="250" width="660" height="80" fill="#e8f5e8" stroke="#4caf50" stroke-width="1" rx="5"/>
+  <text x="880" y="270" class="zone-title">Desktop Runtime Environment</text>
+
+  <!-- EXE File -->
+  <rect x="900" y="280" width="140" height="40" fill="#4caf50" rx="5"/>
+  <text x="970" y="295" class="service-name" style="fill: white;">AegisScanner.exe</text>
+  <text x="970" y="305" class="service-desc" style="fill: white;">Standalone Executable</text>
+
+  <!-- Windows OS -->
+  <rect x="1060" y="280" width="120" height="40" fill="#2196f3" rx="5"/>
+  <text x="1120" y="295" class="service-name" style="fill: white;">Windows OS</text>
+  <text x="1120" y="305" class="service-desc" style="fill: white;">No Installation</text>
+
+  <!-- Python Embedded -->
+  <rect x="1200" y="280" width="120" height="40" fill="#ff9800" rx="5"/>
+  <text x="1260" y="295" class="service-name" style="fill: white;">Python Runtime</text>
+  <text x="1260" y="305" class="service-desc" style="fill: white;">Embedded</text>
+
+  <!-- Desktop Application Layer -->
+  <rect x="870" y="350" width="660" height="240" fill="#f3e5f5" stroke="#9c27b0" stroke-width="1" rx="5"/>
+  <text x="880" y="370" class="zone-title">Desktop Application Core</text>
+
+  <!-- Flask Production Server -->
+  <rect x="900" y="390" width="120" height="60" fill="#e91e63" rx="5"/>
+  <text x="960" y="410" class="service-name" style="fill: white;">Flask Server</text>
+  <text x="960" y="420" class="service-desc" style="fill: white;">Built-in Server</text>
+  <text x="960" y="430" class="service-desc" style="fill: white;">Production Mode</text>
+
+  <!-- GUI Interface -->
+  <rect x="1040" y="390" width="100" height="60" fill="#ff5722" rx="5"/>
+  <text x="1090" y="410" class="service-name" style="fill: white;">Desktop UI</text>
+  <text x="1090" y="420" class="service-desc" style="fill: white;">Web Browser</text>
+  <text x="1090" y="430" class="service-desc" style="fill: white;">Auto-launch</text>
+
+  <!-- Packaged Dependencies -->
+  <rect x="1160" y="390" width="120" height="60" fill="#9c27b0" rx="5"/>
+  <text x="1220" y="410" class="service-name" style="fill: white;">Dependencies</text>
+  <text x="1220" y="420" class="service-desc" style="fill: white;">Bundled</text>
+  <text x="1220" y="430" class="service-desc" style="fill: white;">PyInstaller</text>
+
+  <!-- Same Core Components -->
+  <rect x="900" y="470" width="100" height="50" fill="#3f51b5" rx="5"/>
+  <text x="950" y="490" class="service-name" style="fill: white;">Scanner Engine</text>
+  <text x="950" y="500" class="service-desc" style="fill: white;">Multi-Cloud</text>
+
+  <rect x="1020" y="470" width="100" height="50" fill="#607d8b" rx="5"/>
+  <text x="1070" y="490" class="service-name" style="fill: white;">Reports</text>
+  <text x="1070" y="500" class="service-desc" style="fill: white;">PDF/CSV</text>
+
+  <rect x="1140" y="470" width="100" height="50" fill="#795548" rx="5"/>
+  <text x="1190" y="490" class="service-name" style="fill: white;">AI Analysis</text>
+  <text x="1190" y="500" class="service-desc" style="fill: white;">Gemini API</text>
+
+  <rect x="900" y="530" width="100" height="50" fill="#f44336" rx="5"/>
+  <text x="950" y="550" class="service-name" style="fill: white;">Security</text>
+  <text x="950" y="560" class="service-desc" style="fill: white;">Encryption</text>
+
+  <rect x="1020" y="530" width="100" height="50" fill="#009688" rx="5"/>
+  <text x="1070" y="550" class="service-name" style="fill: white;">Logging</text>
+  <text x="1070" y="560" class="service-desc" style="fill: white;">Debug Logs</text>
+
+  <rect x="1140" y="530" width="100" height="50" fill="#4caf50" rx="5"/>
+  <text x="1190" y="550" class="service-name" style="fill: white;">SQLite DB</text>
+  <text x="1190" y="560" class="service-desc" style="fill: white;">Portable</text>
+
+  <!-- Local Storage -->
+  <rect x="870" y="610" width="660" height="100" fill="#fff3e0" stroke="#ff9800" stroke-width="1" rx="5"/>
+  <text x="880" y="630" class="zone-title">Local Storage &amp; Files</text>
+
+  <!-- Local Files -->
+  <rect x="900" y="650" width="120" height="50" fill="#ff9800" rx="5"/>
+  <text x="960" y="670" class="service-name" style="fill: white;">Local Files</text>
+  <text x="960" y="680" class="service-desc" style="fill: white;">templates/, static/</text>
+
+  <!-- Config Files -->
+  <rect x="1040" y="650" width="120" height="50" fill="#9c27b0" rx="5"/>
+  <text x="1100" y="670" class="service-name" style="fill: white;">Config Files</text>
+  <text x="1100" y="680" class="service-desc" style="fill: white;">.env, settings</text>
+
+  <!-- Logs -->
+  <rect x="1180" y="650" width="120" height="50" fill="#607d8b" rx="5"/>
+  <text x="1240" y="670" class="service-name" style="fill: white;">Log Files</text>
+  <text x="1240" y="680" class="service-desc" style="fill: white;">debug.log</text>
+
+  <!-- Shared External Services -->
+  <rect x="870" y="730" width="660" height="120" fill="#e8f5e8" stroke="#4caf50" stroke-width="1" rx="5"/>
+  <text x="880" y="750" class="zone-title">Same External Services (API Access)</text>
+
+  <!-- Same cloud services as above -->
+  <rect x="900" y="770" width="120" height="50" fill="#ff9800" rx="5"/>
+  <text x="960" y="790" class="service-name" style="fill: white;">AWS Services</text>
+  <text x="960" y="800" class="service-desc" style="fill: white;">via boto3</text>
+
+  <rect x="1040" y="770" width="120" height="50" fill="#2196f3" rx="5"/>
+  <text x="1100" y="790" class="service-name" style="fill: white;">Azure Services</text>
+  <text x="1100" y="800" class="service-desc" style="fill: white;">via Azure SDK</text>
+
+  <rect x="1180" y="770" width="120" height="50" fill="#4caf50" rx="5"/>
+  <text x="1240" y="790" class="service-name" style="fill: white;">GCP Services</text>
+  <text x="1240" y="800" class="service-desc" style="fill: white;">via GCP SDK</text>
+
+  <!-- CLEAN FLOW ARROWS -->
+
+  <!-- User choice flows -->
+  <path d="M 300,160 Q 350,160 400,200" stroke="#2196f3" stroke-width="3" fill="none" marker-end="url(#cloud-arrow)"/>
+  <text x="350" y="175" class="flow-text" style="fill: #2196f3;">Web Application</text>
+
+  <path d="M 300,160 Q 950,160 1000,200" stroke="#4caf50" stroke-width="3" fill="none" marker-end="url(#local-arrow)"/>
+  <text x="650" y="175" class="flow-text" style="fill: #4caf50;">Desktop Application</text>
+
+  <!-- Cloud flows (vertical, no overlaps) -->
+  <line x1="150" y1="320" x2="150" y2="380" stroke="#2196f3" stroke-width="2" marker-end="url(#cloud-arrow)"/>
+  <line x1="150" y1="440" x2="150" y2="510" stroke="#2196f3" stroke-width="2" marker-end="url(#cloud-arrow)"/>
+  <line x1="270" y1="570" x2="270" y2="640" stroke="#2196f3" stroke-width="2" marker-end="url(#cloud-arrow)"/>
+  <line x1="395" y1="570" x2="395" y2="640" stroke="#2196f3" stroke-width="2" marker-end="url(#cloud-arrow)"/>
+
+  <!-- Local flows (vertical, no overlaps) -->
+  <line x1="960" y1="320" x2="960" y2="390" stroke="#4caf50" stroke-width="2" marker-end="url(#local-arrow)"/>
+  <line x1="960" y1="450" x2="960" y2="470" stroke="#4caf50" stroke-width="2" marker-end="url(#local-arrow)"/>
+  <line x1="1070" y1="520" x2="1070" y2="650" stroke="#4caf50" stroke-width="2" marker-end="url(#local-arrow)"/>
+
+  <!-- External service connections (bottom, no overlaps) -->
+  <line x1="160" y1="640" x2="160" y2="710" stroke="#333" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="300" y1="640" x2="300" y2="710" stroke="#333" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="440" y1="640" x2="440" y2="710" stroke="#333" stroke-width="1" marker-end="url(#arrow)"/>
+
+  <line x1="960" y1="700" x2="960" y2="770" stroke="#333" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="1100" y1="700" x2="1100" y2="770" stroke="#333" stroke-width="1" marker-end="url(#arrow)"/>
+  <line x1="1240" y1="700" x2="1240" y2="770" stroke="#333" stroke-width="1" marker-end="url(#arrow)"/>
+
+</svg>

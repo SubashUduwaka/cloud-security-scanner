@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Setup Complete - Aegis Cloud Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.1.1/css/all.min.css">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        .animated-check-container { width: 100px; height: 100px; margin: 1rem auto; }
+        .animated-check-svg .circle { stroke-dasharray: 283; stroke-dashoffset: 283; animation: draw-circle 1s ease-out forwards; }
+        .animated-check-svg .tick { stroke-dasharray: 80; stroke-dashoffset: 80; animation: draw-tick 0.8s ease-out 0.5s forwards; }
+        @keyframes draw-circle { to { stroke-dashoffset: 0; } }
+        @keyframes draw-tick { to { stroke-dashoffset: 0; } }
+        
+        .instructions-container { margin-top: 1rem; }
+        .terminal { background-color: #1e1e1e; color: #f1f1f1; font-family: 'Courier New', Courier, monospace; border-radius: var(--border-radius); padding: 1rem; text-align: left; border: 1px solid #333; box-shadow: 0 4px 10px rgba(0,0,0,0.5); }
+        .instruction-step { font-weight: bold; color: #999; margin-bottom: 0.5rem; }
+        .terminal-line::before { content: '$ '; color: #00A896; }
+        .info-box { background-color: #e3f2fd; border: 1px solid #bbdefb; color: #1565c0; padding: 1rem; border-radius: var(--border-radius); margin: 1.5rem 0; text-align: left; }
+        .info-box h4 { margin-top: 0; color: #1565c0; }
+    </style>
+</head>
+<body class="auth-body-override">
+    <div class="auth-container" style="text-align: center; max-width: 700px;">
+        <div class="animated-check-container">
+            <svg class="animated-check-svg" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <circle class="circle" cx="50" cy="50" r="45" fill="none" stroke="#4CAF50" stroke-width="5"/>
+                <polyline class="tick" points="28,52 45,69 72,42" fill="none" stroke="#4CAF50" stroke-width="6" stroke-linecap="round" stroke-linejoin="round"/>
+            </svg>
+        </div>
+        <h2>Setup Complete!</h2>
+        <p>Your initial configuration file (`.env`) has been successfully created and saved.</p>
+
+        <div class="info-box">
+            <h4><i class="fas fa-check-circle"></i> Configuration Saved</h4>
+            <p>
+                Your settings, including the unique <strong>Master Password</strong>, have been automatically saved to your <code>.env</code> file.
+            </p>
+            <p class="mb-0">
+                Please ensure you have saved a copy of your Master Password in a secure location, as it will not be shown again.
+            </p>
+        </div>
+
+        {% if is_frozen %}
+            <div class="instructions-container">
+                <p>The application will now restart automatically to apply the new settings.</p>
+                <a href="/restart_app" class="button" style="margin-top: 1rem;">Relaunch Now</a>
+            </div>
+        {% else %}
+            <div class="instructions-container">
+                <div class="terminal">
+                    <div class="instruction-step">Next Step: Restart the Server</div>
+                    <p>To apply the new configuration, stop the current server by pressing <strong>Ctrl+C</strong> in your terminal, then restart it with the command below:</p>
+                    <div class="terminal-line" style="margin-top: 1rem;">python app.py</div>
+                </div>
+                <a href="{{ url_for('auth') }}" class="button" style="margin-top: 1.5rem;">Continue to Login/Register</a>
+            </div>
+        {% endif %}
+    </div>
+</body>
+</html>

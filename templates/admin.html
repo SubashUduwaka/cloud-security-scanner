@@ -1,0 +1,1650 @@
+{% extends "layout.html" %}
+{% block title %}Admin Dashboard - Aegis{% endblock %}
+
+{% block content %}
+<!-- Navigation Tabs -->
+<div class="admin-tabs" data-aos="fade-up">
+    <div class="tab-buttons">
+        <button class="tab-button active" data-tab="overview">
+            <i class="fas fa-tachometer-alt"></i> Overview
+        </button>
+        <button class="tab-button" data-tab="users">
+            <i class="fas fa-users"></i> User Management
+        </button>
+        <button class="tab-button" data-tab="scans">
+            <i class="fas fa-search"></i> Scan Management
+        </button>
+        <button class="tab-button" data-tab="audit">
+            <i class="fas fa-clipboard-list"></i> Audit Logs
+        </button>
+        <button class="tab-button" data-tab="system">
+            <i class="fas fa-server"></i> System Monitor
+        </button>
+        <button class="tab-button" data-tab="security">
+            <i class="fas fa-shield-alt"></i> Security
+        </button>
+        <button class="tab-button" data-tab="maintenance">
+            <i class="fas fa-tools"></i> Maintenance
+        </button>
+    </div>
+</div>
+
+<!-- Overview Tab -->
+<div class="tab-content active" id="overview-tab">
+    <div class="card" data-aos="fade-up">
+        <h2><i class="fas fa-user-shield"></i> Admin Dashboard Overview</h2>
+        <p>Comprehensive system administration and monitoring dashboard.</p>
+        
+        <!-- Enhanced Stats Grid -->
+        <div class="admin-stats-grid">
+            <div class="stat-card primary">
+                <div class="stat-icon"><i class="fas fa-users"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ users|length }}</div>
+                    <div class="stat-label">Total Users</div>
+                    <div class="stat-detail">{{ users|selectattr('is_active')|list|length }} active</div>
+                </div>
+            </div>
+            <div class="stat-card success">
+                <div class="stat-icon"><i class="fas fa-search"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ dashboard_stats.total_scans }}</div>
+                    <div class="stat-label">Total Scans</div>
+                    <div class="stat-detail">{{ dashboard_stats.recent_scans_7d }} this week</div>
+                </div>
+            </div>
+            <div class="stat-card warning">
+                <div class="stat-icon"><i class="fas fa-key"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ dashboard_stats.total_credentials }}</div>
+                    <div class="stat-label">Credentials</div>
+                    <div class="stat-detail">Encrypted profiles</div>
+                </div>
+            </div>
+            <div class="stat-card info">
+                <div class="stat-icon"><i class="fas fa-shield-alt"></i></div>
+                <div class="stat-content">
+                    <div class="stat-value">{{ users|selectattr('is_2fa_enabled')|list|length }}</div>
+                    <div class="stat-label">2FA Enabled</div>
+                    <div class="stat-detail">{{ users|selectattr('is_admin')|list|length }} admins</div>
+                </div>
+            </div>
+        </div>
+
+        <!-- System Health Status -->
+        <div class="system-health-panel">
+            <h3><i class="fas fa-heartbeat"></i> System Health</h3>
+            <div id="health-status" class="health-indicators">
+                <div class="health-item" data-component="database">
+                    <span class="health-icon"><i class="fas fa-database"></i></span>
+                    <span class="health-label">Database</span>
+                    <span class="health-status">Checking...</span>
+                </div>
+                <div class="health-item" data-component="scanner">
+                    <span class="health-icon"><i class="fas fa-search"></i></span>
+                    <span class="health-label">Scanner Engine</span>
+                    <span class="health-status">Checking...</span>
+                </div>
+                <div class="health-item" data-component="credentials">
+                    <span class="health-icon"><i class="fas fa-lock"></i></span>
+                    <span class="health-label">Encryption</span>
+                    <span class="health-status">Checking...</span>
+                </div>
+            </div>
+            <button id="refresh-health" class="button button-small">
+                <i class="fas fa-sync-alt"></i> Refresh Status
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- User Management Tab -->
+<div class="tab-content" id="users-tab">
+    <div class="card">
+        <div class="table-header">
+            <h3><i class="fas fa-users"></i> User Management ({{ users|length }})</h3>
+            <div class="admin-controls">
+                <input type="text" id="userSearch" class="form-control-filter" placeholder="Filter users...">
+                <div class="bulk-actions">
+                    <button class="button-small" onclick="selectAllUsers()"><i class="fas fa-check-square"></i> Select All</button>
+                    <button class="button-small" id="bulkDeactivate" onclick="bulkUserAction('deactivate')" disabled><i class="fas fa-user-times"></i> Deactivate</button>
+                    <button class="button-small" id="bulkActivate" onclick="bulkUserAction('activate')" disabled><i class="fas fa-user-check"></i> Activate</button>
+                    <button class="button-small button-danger" id="bulkDelete" onclick="bulkUserAction('delete')" disabled><i class="fas fa-trash"></i> Delete</button>
+                </div>
+            </div>
+        </div>
+        <div class="table-container">
+            <table id="userTable">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAllCheckbox"></th>
+                        <th>Username</th>
+                        <th>Email</th>
+                        <th>Status</th>
+                        <th>Role</th>
+                        <th>MFA</th>
+                        <th>Last Login</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td><input type="checkbox" class="user-checkbox" value="{{ user.id }}"></td>
+                        <td>{{ user.username }}</td>
+                        <td>{{ user.email }}</td>
+                        <td>
+                            {% if user.is_locked %}<span class="status-badge status-critical">Locked</span>
+                            {% elif not user.email_verified %}<span class="status-badge status-warning">Unverified</span>
+                            {% elif user.is_active %}<span class="status-badge status-active">Active</span>
+                            {% else %}<span class="status-badge status-inactive">Inactive</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_admin %}<span class="role-badge role-admin">Admin</span>
+                            {% else %}<span class="role-badge role-user">User</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.is_2fa_enabled %}<i class="fas fa-shield-alt text-success" title="MFA Enabled"></i>
+                            {% else %}<i class="fas fa-shield-alt text-muted" title="MFA Disabled"></i>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.last_login_date %}{{ user.last_login_date.strftime('%Y-%m-%d %H:%M') }}
+                            {% else %}<span class="text-muted">Never</span>
+                            {% endif %}
+                        </td>
+                        <td class="action-buttons">
+                            {% if user.is_locked %}
+                            <form method="POST" action="{{ url_for('unlock_user', user_id=user.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                                <button type="submit" class="button button-small" style="background-color: var(--warning-color);"><i class="fas fa-unlock"></i> Unlock</button>
+                            </form>
+                            {% endif %}
+                            <form method="POST" action="{{ url_for('delete_user', user_id=user.id) }}" style="display: inline;" onsubmit="return confirm('Are you sure you want to permanently delete this user and all their scan data?');">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                                <button type="submit" class="button-danger button-small" {% if user.id == current_user.id %}disabled title="You cannot delete yourself."{% endif %}><i class="fas fa-trash-alt"></i> Delete</button>
+                            </form>
+                            {% if not user.is_admin %}
+                            <form method="POST" action="{{ url_for('promote_user', user_id=user.id) }}" style="display: inline;">
+                                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                                <button type="submit" class="button button-small" style="background-color: var(--success-color);"><i class="fas fa-user-plus"></i> Promote</button>
+                            </form>
+                            {% endif %}
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Scan Management Tab -->
+<div class="tab-content" id="scans-tab">
+    <div class="card">
+        <div class="table-header">
+            <h3><i class="fas fa-search"></i> Scan Management</h3>
+            <div class="admin-controls">
+                <input type="text" id="scanSearch" class="form-control-filter" placeholder="Filter scans...">
+                <button class="button-danger button-small" id="bulkDeleteScans" disabled>
+                    <i class="fas fa-trash"></i> Delete Selected
+                </button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table id="scanTable">
+                <thead>
+                    <tr>
+                        <th><input type="checkbox" id="selectAllScansCheckbox"></th>
+                        <th>Scan ID</th>
+                        <th>User</th>
+                        <th>Provider</th>
+                        <th>Regions</th>
+                        <th>Date</th>
+                        <th>Findings</th>
+                        <th>Status</th>
+                        <th>Actions</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for scan in scans %}
+                    <tr>
+                        <td><input type="checkbox" class="scan-checkbox" value="{{ scan.id }}"></td>
+                        <td><code>{{ scan.id }}</code></td>
+                        <td>{{ scan.user.username if scan.user else 'Unknown' }}</td>
+                        <td>
+                            <span class="provider-badge provider-{{ scan.provider.lower() if scan.provider else 'unknown' }}">
+                                {{ scan.provider or 'Unknown' }}
+                            </span>
+                        </td>
+                        <td>{{ scan.regions or 'All' }}</td>
+                        <td>{{ scan.timestamp.strftime('%Y-%m-%d %H:%M') if scan.timestamp else 'Unknown' }}</td>
+                        <td>
+                            {% if scan.findings_data %}
+                                {% set findings = scan.findings_data|length %}
+                                <span class="findings-badge{% if findings > 10 %} critical{% elif findings > 5 %} warning{% else %} low{% endif %}">
+                                    {{ findings }} issues
+                                </span>
+                            {% else %}
+                                <span class="text-muted">No data</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <span class="status-badge status-{% if scan.timestamp %}completed{% else %}failed{% endif %}">
+                                {% if scan.timestamp %}Completed{% else %}Failed{% endif %}
+                            </span>
+                        </td>
+                        <td class="action-buttons">
+                            <button class="button-small" onclick="viewScanDetails('{{ scan.id }}')">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- Audit Logs Tab -->
+<div class="tab-content" id="audit-tab">
+    <div class="card">
+        <div class="table-header">
+            <h3><i class="fas fa-clipboard-list"></i> Audit Logs</h3>
+            <div class="admin-controls">
+                <input type="text" id="auditSearch" class="form-control-filter" placeholder="Search audit logs...">
+                <select id="auditActionFilter" class="form-control-filter">
+                    <option value="">All Actions</option>
+                    <option value="Login">Login</option>
+                    <option value="Logout">Logout</option>
+                    <option value="Scan">Scan</option>
+                    <option value="User">User Actions</option>
+                </select>
+                <button id="loadMoreAudit" class="button button-small">
+                    <i class="fas fa-plus"></i> Load More
+                </button>
+            </div>
+        </div>
+        <div class="table-container">
+            <table id="auditTable">
+                <thead>
+                    <tr>
+                        <th>Time</th>
+                        <th>User</th>
+                        <th>Action</th>
+                        <th>Details</th>
+                        <th>IP Address</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for log in audit_logs %}
+                    <tr>
+                        <td>{{ log.timestamp.strftime('%Y-%m-%d %H:%M:%S') if log.timestamp else 'Unknown' }}</td>
+                        <td>{{ log.user.username if log.user else 'System' }}</td>
+                        <td>
+                            <span class="action-badge action-{{ log.action.lower().replace(' ', '-') if log.action else 'unknown' }}">
+                                {{ log.action or 'Unknown' }}
+                            </span>
+                        </td>
+                        <td class="details-cell">{{ log.details or 'No details' }}</td>
+                        <td><code>{{ log.ip_address or 'Unknown' }}</code></td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+    </div>
+</div>
+
+<!-- System Monitor Tab -->
+<div class="tab-content" id="system-tab">
+    <div class="card">
+        <div class="table-header">
+            <h3><i class="fas fa-server"></i> System Monitor</h3>
+            <button id="refreshSystemStats" class="button button-small">
+                <i class="fas fa-sync-alt"></i> Refresh Stats
+            </button>
+        </div>
+        
+        <div id="system-stats-container">
+            <div class="loading-indicator">
+                <i class="fas fa-spinner fa-spin"></i> Loading system statistics...
+            </div>
+        </div>
+        
+        <div class="system-logs-section">
+            <h4><i class="fas fa-file-alt"></i> Application Logs</h4>
+            <div class="logs-controls">
+                <select id="logLevel" class="form-control-filter">
+                    <option value="">All Levels</option>
+                    <option value="ERROR">Errors Only</option>
+                    <option value="WARNING">Warnings</option>
+                    <option value="INFO">Info</option>
+                    <option value="DEBUG">Debug</option>
+                </select>
+                <button id="refreshLogs" class="button button-small">
+                    <i class="fas fa-sync-alt"></i> Refresh
+                </button>
+            </div>
+            <div id="logs-container" class="logs-display">
+                <div class="loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i> Loading logs...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Security Tab -->
+<div class="tab-content" id="security-tab">
+    <div class="card">
+        <h3><i class="fas fa-shield-alt"></i> Security Configuration</h3>
+        
+        <div id="security-settings-container">
+            <div class="loading-indicator">
+                <i class="fas fa-spinner fa-spin"></i> Loading security settings...
+            </div>
+        </div>
+        
+        <div class="active-sessions-section">
+            <h4><i class="fas fa-users"></i> Active Sessions</h4>
+            <div id="sessions-container">
+                <div class="loading-indicator">
+                    <i class="fas fa-spinner fa-spin"></i> Loading session data...
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Maintenance Tab -->
+<div class="tab-content" id="maintenance-tab">
+    <div class="card">
+        <h3><i class="fas fa-tools"></i> Database & Maintenance</h3>
+        
+        <div class="maintenance-section">
+            <h4><i class="fas fa-database"></i> Database Management</h4>
+            <div class="maintenance-actions">
+                <button id="createBackup" class="button">
+                    <i class="fas fa-download"></i> Create Backup
+                </button>
+                <button id="showDatabaseInfo" class="button">
+                    <i class="fas fa-info-circle"></i> Database Info
+                </button>
+                <button id="optimizeDatabase" class="button" disabled>
+                    <i class="fas fa-optimize"></i> Optimize Database
+                </button>
+                <button id="cleanupLogs" class="button" disabled>
+                    <i class="fas fa-broom"></i> Clean Old Logs
+                </button>
+            </div>
+            
+            <div id="maintenance-status" class="maintenance-status"></div>
+        </div>
+    </div>
+</div>
+
+<style>
+.admin-tabs {
+    margin-bottom: 2rem;
+}
+
+.tab-buttons {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    border-bottom: 2px solid var(--border-color);
+    padding-bottom: 1rem;
+}
+
+.tab-button {
+    padding: 0.75rem 1.5rem;
+    background: var(--card-bg);
+    border: 1px solid var(--border-color);
+    color: var(--text-color);
+    border-radius: 8px;
+    cursor: pointer;
+    transition: all 0.3s ease;
+    font-size: 0.9rem;
+    white-space: nowrap;
+}
+
+.tab-button:hover {
+    background: var(--primary-color);
+    color: white;
+    transform: translateY(-1px);
+}
+
+.tab-button.active {
+    background: var(--primary-color);
+    color: white;
+    box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+}
+
+.tab-content {
+    display: none;
+}
+
+.tab-content.active {
+    display: block;
+}
+
+.admin-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin: 2rem 0;
+}
+
+.stat-card {
+    background: var(--card-bg);
+    border-radius: 12px;
+    padding: 1.5rem;
+    border-left: 4px solid var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    transition: transform 0.3s ease;
+}
+
+.stat-card:hover {
+    transform: translateY(-2px);
+}
+
+.stat-card.primary { border-left-color: var(--primary-color); }
+.stat-card.success { border-left-color: var(--success-color); }
+.stat-card.warning { border-left-color: var(--warning-color); }
+.stat-card.info { border-left-color: var(--info-color); }
+
+.stat-detail {
+    font-size: 0.8rem;
+    color: var(--medium-grey);
+    margin-top: 0.25rem;
+}
+
+.system-health-panel {
+    margin-top: 2rem;
+    padding: 1.5rem;
+    background: var(--secondary-bg);
+    border-radius: 8px;
+}
+
+.health-indicators {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 1rem;
+    margin: 1rem 0;
+}
+
+.health-item {
+    display: flex;
+    align-items: center;
+    gap: 0.75rem;
+    padding: 0.75rem;
+    background: var(--card-bg);
+    border-radius: 6px;
+}
+
+.health-icon {
+    font-size: 1.25rem;
+    width: 24px;
+    text-align: center;
+}
+
+.health-label {
+    flex: 1;
+    font-weight: 500;
+}
+
+.health-status {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.health-status.healthy {
+    background: var(--success-color);
+    color: white;
+}
+
+.health-status.warning {
+    background: var(--warning-color);
+    color: white;
+}
+
+.health-status.error {
+    background: var(--danger-color);
+    color: white;
+}
+
+.provider-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.provider-aws { background: #ff9900; color: white; }
+.provider-gcp { background: #4285f4; color: white; }
+.provider-unknown { background: var(--medium-grey); color: white; }
+
+.findings-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+}
+
+.findings-badge.critical { background: var(--danger-color); color: white; }
+.findings-badge.warning { background: var(--warning-color); color: white; }
+.findings-badge.low { background: var(--success-color); color: white; }
+
+.action-badge {
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    font-size: 0.8rem;
+    font-weight: 500;
+    text-transform: capitalize;
+}
+
+.action-login { background: var(--success-color); color: white; }
+.action-logout { background: var(--info-color); color: white; }
+.action-scan { background: var(--primary-color); color: white; }
+.action-user { background: var(--warning-color); color: white; }
+
+.details-cell {
+    max-width: 300px;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+
+.logs-display {
+    background: #1a1a1a;
+    color: #00ff00;
+    font-family: 'Consolas', 'Monaco', 'Courier New', monospace;
+    padding: 1rem;
+    border-radius: 6px;
+    max-height: 400px;
+    overflow-y: auto;
+    font-size: 0.85rem;
+    line-height: 1.4;
+}
+
+.maintenance-actions {
+    display: flex;
+    gap: 1rem;
+    margin: 1rem 0;
+    flex-wrap: wrap;
+}
+
+.maintenance-status {
+    padding: 1rem;
+    margin-top: 1rem;
+    border-radius: 6px;
+    min-height: 50px;
+}
+
+.loading-indicator {
+    text-align: center;
+    padding: 2rem;
+    color: var(--medium-grey);
+}
+
+.system-metrics {
+    margin: 2rem 0;
+}
+
+.metric-row {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+.metric-card {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 12px;
+    border-left: 4px solid var(--primary-color);
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.metric-card h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-color);
+    font-size: 1rem;
+}
+
+.metric-value {
+    font-size: 2rem;
+    font-weight: bold;
+    color: var(--primary-color);
+    margin-bottom: 0.5rem;
+}
+
+.metric-detail {
+    font-size: 0.85rem;
+    color: var(--medium-grey);
+    margin-bottom: 1rem;
+}
+
+.metric-bar {
+    width: 100%;
+    height: 8px;
+    background: var(--border-color);
+    border-radius: 4px;
+    overflow: hidden;
+}
+
+.metric-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--success-color), var(--warning-color), var(--danger-color));
+    transition: width 0.3s ease;
+    border-radius: 4px;
+}
+
+.system-info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 1.5rem;
+}
+
+.info-card {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.info-card h4 {
+    margin: 0 0 1rem 0;
+    color: var(--text-color);
+}
+
+.info-card p {
+    margin: 0.5rem 0;
+    color: var(--text-color);
+}
+
+.security-settings {
+    background: var(--card-bg);
+    padding: 1.5rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+}
+
+.setting-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 0.75rem 0;
+    border-bottom: 1px solid var(--border-color);
+}
+
+.setting-row:last-child {
+    border-bottom: none;
+}
+
+.setting-row label {
+    font-weight: 500;
+    color: var(--text-color);
+}
+
+.session-item {
+    background: var(--card-bg);
+    padding: 1rem;
+    border-radius: 8px;
+    border: 1px solid var(--border-color);
+    margin-bottom: 1rem;
+}
+
+.session-user {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    margin-bottom: 0.5rem;
+}
+
+.session-details p {
+    margin: 0.25rem 0;
+    color: var(--text-color);
+    font-size: 0.9rem;
+}
+
+.error-message {
+    background: var(--danger-color);
+    color: white;
+    padding: 1rem;
+    border-radius: 6px;
+    margin: 1rem 0;
+}
+
+.success-message {
+    background: var(--success-color);
+    color: white;
+    padding: 1rem;
+    border-radius: 6px;
+    margin: 1rem 0;
+}
+
+.logs-controls {
+    display: flex;
+    gap: 1rem;
+    margin-bottom: 1rem;
+    align-items: center;
+}
+
+.system-logs-section {
+    margin-top: 2rem;
+}
+
+.system-logs-section h4 {
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+.active-sessions-section {
+    margin-top: 2rem;
+}
+
+.active-sessions-section h4 {
+    margin-bottom: 1rem;
+    color: var(--text-color);
+}
+
+/* --- Dark Mode Support for Admin Dashboard --- */
+body.dark-mode .tab-button {
+    background: #566573;
+    border-color: #6C7A89;
+    color: #ECF0F1;
+}
+
+body.dark-mode .tab-button:hover {
+    background: var(--primary-color);
+    color: white;
+}
+
+body.dark-mode .tab-button.active {
+    background: var(--primary-color);
+    color: white;
+}
+
+body.dark-mode .stat-card {
+    background: #566573;
+    color: #ECF0F1;
+    border-left-color: var(--primary-color);
+}
+
+body.dark-mode .stat-value {
+    color: #ECF0F1;
+}
+
+body.dark-mode .stat-label {
+    color: #ECF0F1;
+}
+
+body.dark-mode .stat-detail {
+    color: #BDC3C7;
+}
+
+body.dark-mode .system-health-panel {
+    background: #566573;
+}
+
+body.dark-mode .system-health-panel h3 {
+    color: #ECF0F1;
+}
+
+body.dark-mode .health-item {
+    background: var(--card-bg);
+}
+
+body.dark-mode .health-icon {
+    color: #ECF0F1;
+}
+
+body.dark-mode .health-label {
+    color: #ECF0F1;
+}
+
+body.dark-mode .metric-card {
+    background: #566573;
+    border-left-color: var(--primary-color);
+}
+
+body.dark-mode .metric-card h4 {
+    color: #ECF0F1;
+}
+
+body.dark-mode .metric-value {
+    color: var(--primary-color);
+}
+
+body.dark-mode .metric-detail {
+    color: #BDC3C7;
+}
+
+body.dark-mode .metric-bar {
+    background: #4A5568;
+}
+
+body.dark-mode .info-card {
+    background: #566573;
+    border-color: #6C7A89;
+}
+
+body.dark-mode .info-card h4 {
+    color: #ECF0F1;
+}
+
+body.dark-mode .info-card p {
+    color: #ECF0F1;
+}
+
+body.dark-mode .security-settings {
+    background: #566573;
+    border-color: #6C7A89;
+}
+
+body.dark-mode .setting-row {
+    border-bottom-color: #6C7A89;
+}
+
+body.dark-mode .setting-row label {
+    color: #ECF0F1;
+}
+
+body.dark-mode .session-item {
+    background: #566573;
+    border-color: #6C7A89;
+}
+
+body.dark-mode .session-user strong {
+    color: #ECF0F1;
+}
+
+body.dark-mode .session-details p {
+    color: #ECF0F1;
+}
+
+body.dark-mode .loading-indicator {
+    color: #BDC3C7;
+}
+
+body.dark-mode .error-message {
+    background: var(--danger-color);
+    color: white;
+}
+
+body.dark-mode .success-message {
+    background: var(--success-color);
+    color: white;
+}
+
+body.dark-mode .info-message {
+    background: var(--info-color);
+    color: white;
+}
+
+/* Fix dark mode text color issues */
+body.dark-mode .admin-stats-grid .stat-content {
+    color: inherit;
+}
+
+body.dark-mode .system-health-panel .health-status {
+    color: #ECF0F1;
+}
+
+body.dark-mode .logs-display {
+    background: #1a1a1a;
+    color: #00ff00;
+}
+
+body.dark-mode .maintenance-status {
+    color: #ECF0F1;
+}
+
+/* Fix oval backgrounds around health icons in dark mode */
+body.dark-mode .health-icon {
+    background: none !important;
+    border-radius: 0 !important;
+    color: var(--primary-color) !important;
+}
+
+body.dark-mode .health-item {
+    background: transparent !important;
+    border: 1px solid #6C7A89;
+}
+
+@media (max-width: 768px) {
+    .tab-buttons {
+        flex-direction: column;
+    }
+    
+    .admin-stats-grid {
+        grid-template-columns: 1fr;
+    }
+    
+    .health-indicators {
+        grid-template-columns: 1fr;
+    }
+    
+    .maintenance-actions {
+        flex-direction: column;
+    }
+}
+</style>
+
+<script>
+// Tab switching functionality
+document.addEventListener('DOMContentLoaded', function() {
+    const tabButtons = document.querySelectorAll('.tab-button');
+    const tabContents = document.querySelectorAll('.tab-content');
+    
+    tabButtons.forEach(button => {
+        button.addEventListener('click', () => {
+            const targetTab = button.dataset.tab;
+            
+            // Remove active class from all buttons and contents
+            tabButtons.forEach(btn => btn.classList.remove('active'));
+            tabContents.forEach(content => content.classList.remove('active'));
+            
+            // Add active class to clicked button and corresponding content
+            button.classList.add('active');
+            document.getElementById(targetTab + '-tab').classList.add('active');
+            
+            // Load data for specific tabs when activated
+            switch(targetTab) {
+                case 'overview':
+                    loadHealthStatus();
+                    break;
+                case 'system':
+                    loadSystemStats();
+                    loadApplicationLogs();
+                    break;
+                case 'security':
+                    loadSecuritySettings();
+                    loadActiveSessions();
+                    break;
+                case 'audit':
+                    // Audit logs are already loaded, could implement pagination here
+                    break;
+            }
+        });
+    });
+    
+    // Load initial data for overview tab
+    loadHealthStatus();
+    
+    // Set up event listeners for various admin functions
+    setupAdminEventListeners();
+    
+    // Set up audit log functionality
+    setupAuditLogFunctionality();
+});
+
+function setupAdminEventListeners() {
+    // Health status refresh
+    document.getElementById('refresh-health')?.addEventListener('click', loadHealthStatus);
+    
+    // System stats refresh
+    document.getElementById('refreshSystemStats')?.addEventListener('click', loadSystemStats);
+    
+    // Logs refresh
+    document.getElementById('refreshLogs')?.addEventListener('click', loadApplicationLogs);
+    
+    // Log level filter
+    document.getElementById('logLevel')?.addEventListener('change', loadApplicationLogs);
+    
+    // Backup creation
+    document.getElementById('createBackup')?.addEventListener('click', createDatabaseBackup);
+    
+    // Database info
+    document.getElementById('showDatabaseInfo')?.addEventListener('click', showDatabaseInfo);
+    
+    // Bulk scan deletion
+    document.getElementById('bulkDeleteScans')?.addEventListener('click', bulkDeleteScans);
+    
+    // Scan checkbox handling
+    const scanCheckboxes = document.querySelectorAll('.scan-checkbox');
+    const selectAllScansCheckbox = document.getElementById('selectAllScansCheckbox');
+    const bulkDeleteScansBtn = document.getElementById('bulkDeleteScans');
+    
+    scanCheckboxes.forEach(checkbox => {
+        checkbox.addEventListener('change', function() {
+            const checkedScans = document.querySelectorAll('.scan-checkbox:checked');
+            bulkDeleteScansBtn.disabled = checkedScans.length === 0;
+        });
+    });
+    
+    selectAllScansCheckbox?.addEventListener('change', function() {
+        scanCheckboxes.forEach(checkbox => {
+            checkbox.checked = this.checked;
+        });
+        bulkDeleteScansBtn.disabled = !this.checked;
+    });
+}
+
+async function loadHealthStatus() {
+    try {
+        const response = await fetch('/api/v1/health/quick');
+        const data = await response.json();
+        
+        const healthContainer = document.getElementById('health-status');
+        
+        if (data.components) {
+            Object.entries(data.components).forEach(([component, status]) => {
+                const healthItem = healthContainer.querySelector(`[data-component="${component}"] .health-status`);
+                if (healthItem) {
+                    healthItem.textContent = status.message || 'Unknown';
+                    healthItem.className = `health-status ${status.status}`;
+                }
+            });
+        } else {
+            // Handle error case
+            const healthItems = healthContainer.querySelectorAll('.health-status');
+            healthItems.forEach(item => {
+                item.textContent = 'Error';
+                item.className = 'health-status error';
+            });
+        }
+    } catch (error) {
+        console.error('Failed to load health status:', error);
+        // Set all to error state
+        const healthContainer = document.getElementById('health-status');
+        const healthItems = healthContainer.querySelectorAll('.health-status');
+        healthItems.forEach(item => {
+            item.textContent = 'Failed to load';
+            item.className = 'health-status error';
+        });
+    }
+}
+
+async function loadSystemStats() {
+    const container = document.getElementById('system-stats-container');
+    
+    try {
+        const response = await fetch('/api/admin/system-stats');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const stats = data.current_stats;
+            const systemInfo = data.system_info;
+            const dbStats = data.database_stats;
+            const psutilAvailable = data.psutil_available;
+            
+            // Handle numeric values safely
+            const cpuPercent = typeof stats.cpu_percent === 'number' ? stats.cpu_percent : 0;
+            const memoryPercent = typeof stats.memory_percent === 'number' ? stats.memory_percent : 0;
+            const diskPercent = typeof stats.disk_percent === 'number' ? stats.disk_percent : 0;
+            
+            const memoryUsedGB = typeof stats.memory_used === 'number' ? (stats.memory_used / 1024 / 1024 / 1024).toFixed(1) : 'N/A';
+            const memoryTotalGB = typeof systemInfo.memory_total === 'number' ? (systemInfo.memory_total / 1024 / 1024 / 1024).toFixed(1) : 'N/A';
+            const diskUsedGB = typeof stats.disk_used === 'number' ? (stats.disk_used / 1024 / 1024 / 1024).toFixed(1) : 'N/A';
+            const diskTotalGB = typeof systemInfo.disk_total === 'number' ? (systemInfo.disk_total / 1024 / 1024 / 1024).toFixed(1) : 'N/A';
+            
+            container.innerHTML = `
+                <div class="system-metrics">
+                    ${!psutilAvailable ? '<div class="info-message" style="background: var(--warning-color); color: white; padding: 1rem; border-radius: 6px; margin-bottom: 1rem;"><i class="fas fa-exclamation-triangle"></i> System monitoring limited - psutil not installed. Run: pip install psutil</div>' : ''}
+                    <div class="metric-row">
+                        <div class="metric-card">
+                            <h4><i class="fas fa-microchip"></i> CPU Usage</h4>
+                            <div class="metric-value">${cpuPercent.toFixed(1)}%</div>
+                            <div class="metric-bar">
+                                <div class="metric-fill" style="width: ${cpuPercent}%"></div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <h4><i class="fas fa-memory"></i> Memory Usage</h4>
+                            <div class="metric-value">${memoryPercent.toFixed(1)}%</div>
+                            <div class="metric-detail">${memoryUsedGB} GB / ${memoryTotalGB} GB</div>
+                            <div class="metric-bar">
+                                <div class="metric-fill" style="width: ${memoryPercent}%"></div>
+                            </div>
+                        </div>
+                        <div class="metric-card">
+                            <h4><i class="fas fa-hdd"></i> Disk Usage</h4>
+                            <div class="metric-value">${diskPercent.toFixed(1)}%</div>
+                            <div class="metric-detail">${diskUsedGB} GB / ${diskTotalGB} GB</div>
+                            <div class="metric-bar">
+                                <div class="metric-fill" style="width: ${diskPercent}%"></div>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="system-info-grid">
+                        <div class="info-card">
+                            <h4>System Information</h4>
+                            <p><strong>Platform:</strong> ${systemInfo.platform} ${systemInfo.platform_version}</p>
+                            <p><strong>Architecture:</strong> ${systemInfo.architecture}</p>
+                            <p><strong>Python:</strong> ${systemInfo.python_version}</p>
+                            <p><strong>CPU Cores:</strong> ${systemInfo.cpu_cores}</p>
+                            ${stats.uptime ? `<p><strong>Uptime:</strong> ${stats.uptime}</p>` : ''}
+                        </div>
+                        <div class="info-card">
+                            <h4>Database Statistics</h4>
+                            <p><strong>Total Users:</strong> ${dbStats.total_users}</p>
+                            <p><strong>Total Scans:</strong> ${dbStats.total_scans}</p>
+                            <p><strong>Credentials:</strong> ${dbStats.total_credentials}</p>
+                            <p><strong>Audit Logs:</strong> ${dbStats.total_audit_logs}</p>
+                            <p><strong>Recent Scans (7d):</strong> ${dbStats.recent_scans_7d}</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = '<div class="error-message">Failed to load system statistics</div>';
+        }
+    } catch (error) {
+        container.innerHTML = '<div class="error-message">Error loading system statistics</div>';
+        console.error('Failed to load system stats:', error);
+    }
+}
+
+async function loadApplicationLogs() {
+    const container = document.getElementById('logs-container');
+    const level = document.getElementById('logLevel')?.value || '';
+    
+    try {
+        const response = await fetch(`/api/admin/logs?lines=100&level=${level}`);
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const logsHtml = data.logs.map(log => `<div>${log}</div>`).join('');
+            container.innerHTML = logsHtml || '<div>No logs found</div>';
+        } else {
+            container.innerHTML = '<div>Failed to load logs</div>';
+        }
+    } catch (error) {
+        container.innerHTML = '<div>Error loading logs</div>';
+        console.error('Failed to load logs:', error);
+    }
+}
+
+async function loadSecuritySettings() {
+    const container = document.getElementById('security-settings-container');
+    
+    try {
+        const response = await fetch('/api/admin/security/settings');
+        
+        if (!response.ok) {
+            throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+        }
+        
+        const data = await response.json();
+        
+        if (data.status === 'success' && data.settings) {
+            const settings = data.settings;
+            const sessionTimeoutMinutes = typeof settings.session_timeout === 'number' ? 
+                Math.floor(settings.session_timeout / 60) : 'N/A';
+            
+            container.innerHTML = `
+                <div class="security-settings">
+                    <div class="setting-row">
+                        <label>Max Login Attempts:</label>
+                        <span>${settings.max_login_attempts || 'N/A'}</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>Session Timeout:</label>
+                        <span>${sessionTimeoutMinutes} minutes</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>Password Min Length:</label>
+                        <span>${settings.password_min_length || 'N/A'} characters</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>2FA Required:</label>
+                        <span class="status-badge ${settings.require_2fa ? 'status-active' : 'status-inactive'}">
+                            ${settings.require_2fa ? 'Yes' : 'No'}
+                        </span>
+                    </div>
+                    <div class="setting-row">
+                        <label>SSL Enabled:</label>
+                        <span class="status-badge ${settings.ssl_enabled ? 'status-active' : 'status-inactive'}">
+                            ${settings.ssl_enabled ? 'Yes' : 'No'}
+                        </span>
+                    </div>
+                    <div class="setting-row">
+                        <label>CSRF Protection:</label>
+                        <span class="status-badge ${settings.csrf_protection ? 'status-active' : 'status-inactive'}">
+                            ${settings.csrf_protection ? 'Enabled' : 'Disabled'}
+                        </span>
+                    </div>
+                    <div class="setting-row">
+                        <label>Secure Cookies:</label>
+                        <span class="status-badge ${settings.secure_cookies ? 'status-active' : 'status-inactive'}">
+                            ${settings.secure_cookies ? 'Enabled' : 'Disabled'}
+                        </span>
+                    </div>
+                    <div class="setting-row">
+                        <label>HTTP Only Cookies:</label>
+                        <span class="status-badge ${settings.httponly_cookies ? 'status-active' : 'status-inactive'}">
+                            ${settings.httponly_cookies ? 'Enabled' : 'Disabled'}
+                        </span>
+                    </div>
+                </div>
+            `;
+        } else {
+            container.innerHTML = `<div class="error-message">Failed to load security settings: ${data.message || 'Unknown error'}</div>`;
+        }
+    } catch (error) {
+        container.innerHTML = `<div class="error-message">Error loading security settings: ${error.message}</div>`;
+        console.error('Failed to load security settings:', error);
+    }
+}
+
+async function loadActiveSessions() {
+    const container = document.getElementById('sessions-container');
+    
+    try {
+        const response = await fetch('/api/admin/sessions');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const sessions = data.active_sessions;
+            if (sessions.length > 0) {
+                const sessionsHtml = sessions.map(session => `
+                    <div class="session-item">
+                        <div class="session-user">
+                            <strong>${session.username}</strong>
+                            ${session.is_admin ? '<span class="role-badge role-admin">Admin</span>' : '<span class="role-badge role-user">User</span>'}
+                        </div>
+                        <div class="session-details">
+                            <p>Email: ${session.email}</p>
+                            <p>Last Login: ${session.last_login ? new Date(session.last_login).toLocaleString() : 'Never'}</p>
+                            <p>2FA: ${session.is_2fa_enabled ? 'Enabled' : 'Disabled'}</p>
+                            ${session.is_locked ? '<span class="status-badge status-critical">Locked</span>' : ''}
+                        </div>
+                    </div>
+                `).join('');
+                container.innerHTML = sessionsHtml;
+            } else {
+                container.innerHTML = '<div>No active sessions found</div>';
+            }
+        } else {
+            container.innerHTML = '<div class="error-message">Failed to load sessions</div>';
+        }
+    } catch (error) {
+        container.innerHTML = '<div class="error-message">Error loading sessions</div>';
+        console.error('Failed to load sessions:', error);
+    }
+}
+
+async function createDatabaseBackup() {
+    const button = document.getElementById('createBackup');
+    const statusContainer = document.getElementById('maintenance-status');
+    
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Backup...';
+    
+    try {
+        const response = await fetch('/api/admin/backup/create', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            }
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            statusContainer.innerHTML = `
+                <div class="success-message">
+                    <i class="fas fa-check-circle"></i>
+                    Backup created successfully: ${data.backup_file}<br>
+                    <small>Size: ${(data.backup_size / 1024).toFixed(1)} KB | Path: ${data.backup_path}</small>
+                </div>
+            `;
+        } else {
+            statusContainer.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Backup failed: ${data.message}
+                    ${data.details ? '<br><small>' + data.details + '</small>' : ''}
+                </div>
+            `;
+        }
+    } catch (error) {
+        statusContainer.innerHTML = `
+            <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                Error creating backup: ${error.message}
+            </div>
+        `;
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-download"></i> Create Backup';
+    }
+}
+
+async function showDatabaseInfo() {
+    const statusContainer = document.getElementById('maintenance-status');
+    
+    try {
+        const response = await fetch('/api/admin/database/info');
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            const fileInfo = data.file_info;
+            statusContainer.innerHTML = `
+                <div class="info-message" style="background: var(--info-color); color: white; padding: 1rem; border-radius: 6px;">
+                    <h4><i class="fas fa-database"></i> Database Information</h4>
+                    <p><strong>Database URI:</strong> ${data.database_uri}</p>
+                    <p><strong>Database Path:</strong> ${data.database_path}</p>
+                    <p><strong>User Data Directory:</strong> ${data.user_data_dir}</p>
+                    <p><strong>File Exists:</strong> ${fileInfo.exists ? 'Yes' : 'No'}</p>
+                    ${fileInfo.exists ? `
+                        <p><strong>File Size:</strong> ${(fileInfo.size / 1024).toFixed(1)} KB</p>
+                        <p><strong>Last Modified:</strong> ${new Date(fileInfo.modified).toLocaleString()}</p>
+                        <p><strong>Readable:</strong> ${fileInfo.readable ? 'Yes' : 'No'}</p>
+                        <p><strong>Writable:</strong> ${fileInfo.writable ? 'Yes' : 'No'}</p>
+                    ` : ''}
+                </div>
+            `;
+        } else {
+            statusContainer.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    Failed to get database info: ${data.message}
+                </div>
+            `;
+        }
+    } catch (error) {
+        statusContainer.innerHTML = `
+            <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                Error getting database info: ${error.message}
+            </div>
+        `;
+    }
+}
+
+async function bulkDeleteScans() {
+    const checkedScans = Array.from(document.querySelectorAll('.scan-checkbox:checked')).map(cb => cb.value);
+    
+    if (checkedScans.length === 0) {
+        alert('No scans selected');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to delete ${checkedScans.length} scan result(s)? This action cannot be undone.`)) {
+        return;
+    }
+    
+    try {
+        const response = await fetch('/api/admin/scans/bulk-delete', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: JSON.stringify({ scan_ids: checkedScans })
+        });
+        
+        const data = await response.json();
+        
+        if (data.status === 'success') {
+            // Remove deleted rows from table
+            checkedScans.forEach(scanId => {
+                const row = document.querySelector(`.scan-checkbox[value="${scanId}"]`).closest('tr');
+                row.remove();
+            });
+            
+            // Reset checkboxes
+            document.getElementById('selectAllScansCheckbox').checked = false;
+            document.getElementById('bulkDeleteScans').disabled = true;
+            
+            // Show success message
+            if (typeof Toastify !== 'undefined') {
+                Toastify({
+                    text: data.message,
+                    duration: 3000,
+                    gravity: "top",
+                    position: "center",
+                    style: { background: "var(--success-color)" }
+                }).showToast();
+            }
+        } else {
+            alert('Failed to delete scans: ' + data.message);
+        }
+    } catch (error) {
+        alert('Error deleting scans: ' + error.message);
+    }
+}
+
+async function viewScanDetails(scanId) {
+    try {
+        // Get scan details from the API
+        const response = await fetch(`/api/v1/scan_session_details?scan_id=${scanId}`);
+        const data = await response.json();
+        
+        if (data && data.length > 0) {
+            // Create a modal to display scan details
+            showScanDetailsModal(scanId, data);
+        } else {
+            alert('No scan details found for this scan ID');
+        }
+    } catch (error) {
+        console.error('Error loading scan details:', error);
+        alert('Failed to load scan details. You can view this scan in the main dashboard.');
+        // Fallback: redirect to dashboard
+        window.open('/dashboard', '_blank');
+    }
+}
+
+function showScanDetailsModal(scanId, scanData) {
+    const modal = document.getElementById('finding-modal');
+    const modalContent = document.getElementById('modal-content-dynamic');
+    
+    const totalFindings = scanData.length;
+    const criticalFindings = scanData.filter(item => item.status === 'CRITICAL').length;
+    const timestamp = scanData[0]?.timestamp || 'Unknown';
+    const provider = scanData[0]?.provider || 'Unknown';
+    
+    modalContent.innerHTML = `
+        <h3><i class="fas fa-search"></i> Scan Details - ${scanId}</h3>
+        <div style="margin-bottom: 1rem;">
+            <p><strong>Scan ID:</strong> <code>${scanId}</code></p>
+            <p><strong>Provider:</strong> <span class="provider-badge provider-${provider.toLowerCase()}">${provider}</span></p>
+            <p><strong>Timestamp:</strong> ${new Date(timestamp).toLocaleString()}</p>
+            <p><strong>Total Findings:</strong> ${totalFindings}</p>
+            <p><strong>Critical Issues:</strong> <span style="color: var(--danger-color); font-weight: bold;">${criticalFindings}</span></p>
+        </div>
+        
+        <div style="max-height: 400px; overflow-y: auto;">
+            <h4>Findings Summary</h4>
+            ${scanData.slice(0, 10).map(finding => `
+                <div style="border: 1px solid var(--border-color); padding: 0.75rem; margin-bottom: 0.5rem; border-radius: 4px; border-left: 4px solid ${finding.status === 'CRITICAL' ? 'var(--danger-color)' : finding.status === 'ERROR' ? 'var(--warning-color)' : 'var(--success-color)'};">
+                    <div style="display: flex; justify-content: space-between; align-items: center;">
+                        <strong>${finding.service || 'Unknown Service'}</strong>
+                        <span style="padding: 0.2rem 0.5rem; border-radius: 4px; font-size: 0.8rem; background: ${finding.status === 'CRITICAL' ? 'var(--danger-color)' : finding.status === 'ERROR' ? 'var(--warning-color)' : 'var(--success-color)'}; color: white;">${finding.status}</span>
+                    </div>
+                    <p style="margin: 0.5rem 0 0 0; font-size: 0.9rem; color: var(--medium-grey);">${finding.resource || finding.description || 'No description'}</p>
+                </div>
+            `).join('')}
+            ${totalFindings > 10 ? `<p style="text-align: center; color: var(--medium-grey); font-style: italic;">... and ${totalFindings - 10} more findings</p>` : ''}
+        </div>
+        
+        <div style="margin-top: 1rem; padding-top: 1rem; border-top: 1px solid var(--border-color);">
+            <button class="button" onclick="window.open('/dashboard#history', '_blank')">
+                <i class="fas fa-external-link-alt"></i> View Full Details in Dashboard
+            </button>
+        </div>
+    `;
+    
+    modal.style.display = 'flex';
+}
+
+// User management functions (existing functionality)
+function selectAllUsers() {
+    const checkboxes = document.querySelectorAll('.user-checkbox');
+    const selectAllCheckbox = document.getElementById('selectAllCheckbox');
+    
+    checkboxes.forEach(checkbox => {
+        checkbox.checked = !selectAllCheckbox.checked;
+    });
+    
+    selectAllCheckbox.checked = !selectAllCheckbox.checked;
+    
+    // Update bulk action buttons
+    const checkedUsers = document.querySelectorAll('.user-checkbox:checked');
+    const bulkButtons = ['bulkDeactivate', 'bulkActivate', 'bulkDelete'];
+    bulkButtons.forEach(btnId => {
+        const btn = document.getElementById(btnId);
+        if (btn) btn.disabled = checkedUsers.length === 0;
+    });
+}
+
+function bulkUserAction(action) {
+    const checkedUsers = Array.from(document.querySelectorAll('.user-checkbox:checked')).map(cb => cb.value);
+    
+    if (checkedUsers.length === 0) {
+        alert('No users selected');
+        return;
+    }
+    
+    if (!confirm(`Are you sure you want to ${action} ${checkedUsers.length} user(s)?`)) {
+        return;
+    }
+    
+    // Implementation would depend on backend API for bulk operations
+    console.log(`Bulk ${action} for users:`, checkedUsers);
+}
+
+// Audit log functionality
+let auditLogsOffset = 0;
+let auditLogsLoading = false;
+const auditLogsLimit = 50;
+let currentAuditFilters = { search: '', action: '' };
+
+function setupAuditLogFunctionality() {
+    // Search input event listener
+    const auditSearchInput = document.getElementById('auditSearch');
+    if (auditSearchInput) {
+        auditSearchInput.addEventListener('input', debounce(() => {
+            currentAuditFilters.search = auditSearchInput.value;
+            resetAuditLogs();
+            loadAuditLogs();
+        }, 500));
+    }
+    
+    // Action filter event listener
+    const auditActionFilter = document.getElementById('auditActionFilter');
+    if (auditActionFilter) {
+        auditActionFilter.addEventListener('change', () => {
+            currentAuditFilters.action = auditActionFilter.value;
+            resetAuditLogs();
+            loadAuditLogs();
+        });
+    }
+    
+    // Load more button event listener
+    const loadMoreButton = document.getElementById('loadMoreAudit');
+    if (loadMoreButton) {
+        loadMoreButton.addEventListener('click', loadMoreAuditLogs);
+    }
+}
+
+function debounce(func, wait) {
+    let timeout;
+    return function executedFunction(...args) {
+        const later = () => {
+            clearTimeout(timeout);
+            func(...args);
+        };
+        clearTimeout(timeout);
+        timeout = setTimeout(later, wait);
+    };
+}
+
+function resetAuditLogs() {
+    auditLogsOffset = 0;
+    const tbody = document.querySelector('#auditTable tbody');
+    if (tbody) {
+        // Keep the server-rendered rows if this is the initial load
+        if (currentAuditFilters.search || currentAuditFilters.action) {
+            tbody.innerHTML = '';
+        }
+    }
+}
+
+async function loadAuditLogs() {
+    if (auditLogsLoading) return;
+    
+    auditLogsLoading = true;
+    const loadMoreButton = document.getElementById('loadMoreAudit');
+    if (loadMoreButton) {
+        loadMoreButton.disabled = true;
+        loadMoreButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Loading...';
+    }
+    
+    try {
+        const params = new URLSearchParams({
+            offset: auditLogsOffset,
+            limit: auditLogsLimit,
+            search: currentAuditFilters.search,
+            action: currentAuditFilters.action
+        });
+        
+        const response = await fetch(`/api/admin/audit-logs?${params}`);
+        const data = await response.json();
+        
+        if (data.status === 'success' && data.logs) {
+            displayAuditLogs(data.logs, auditLogsOffset === 0);
+            auditLogsOffset += data.logs.length;
+            
+            // Hide load more button if we got fewer logs than requested
+            if (loadMoreButton && data.logs.length < auditLogsLimit) {
+                loadMoreButton.style.display = 'none';
+            } else if (loadMoreButton) {
+                loadMoreButton.style.display = 'block';
+            }
+        } else {
+            console.error('Failed to load audit logs:', data.message);
+        }
+    } catch (error) {
+        console.error('Error loading audit logs:', error);
+    } finally {
+        auditLogsLoading = false;
+        if (loadMoreButton) {
+            loadMoreButton.disabled = false;
+            loadMoreButton.innerHTML = '<i class="fas fa-plus"></i> Load More';
+        }
+    }
+}
+
+function displayAuditLogs(logs, replaceContent = false) {
+    const tbody = document.querySelector('#auditTable tbody');
+    if (!tbody) return;
+    
+    if (replaceContent) {
+        tbody.innerHTML = '';
+    }
+    
+    logs.forEach(log => {
+        const row = document.createElement('tr');
+        row.innerHTML = `
+            <td>${log.timestamp ? new Date(log.timestamp).toLocaleString() : 'Unknown'}</td>
+            <td>${log.username || 'System'}</td>
+            <td>
+                <span class="action-badge action-${(log.action || 'unknown').toLowerCase().replace(/\s+/g, '-')}">
+                    ${log.action || 'Unknown'}
+                </span>
+            </td>
+            <td class="details-cell" title="${log.details || 'No details'}">${log.details || 'No details'}</td>
+            <td><code>${log.ip_address || 'Unknown'}</code></td>
+        `;
+        tbody.appendChild(row);
+    });
+}
+
+function loadMoreAuditLogs() {
+    loadAuditLogs();
+}
+</script>
+
+{% endblock %}

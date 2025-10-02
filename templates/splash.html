@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aegis Cloud Scanner</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/styles.css') }}">
+    <style>
+        body {
+            margin: 0;
+            font-family: 'Poppins', sans-serif;
+            overflow: hidden;
+            color: white;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            /* ## THEMED ANIMATED GRADIENT BACKGROUND ## */
+            background: linear-gradient(315deg, #00A896, #007F73, #005f5a);
+            background-size: 400% 400%;
+            animation: gradient-animation 15s ease infinite;
+            position: relative;
+        }
+        body::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            right: 0;
+            bottom: 0;
+            background: rgba(0, 0, 0, 0.4);
+            z-index: 1;
+        }
+        @keyframes gradient-animation {
+            0% { background-position: 0% 50%; }
+            50% { background-position: 100% 50%; }
+            100% { background-position: 0% 50%; }
+        }
+
+        .splash-container {
+            text-align: center;
+            opacity: 0;
+            animation: fade-in 1s ease forwards;
+            position: relative;
+            z-index: 2;
+        }
+        @keyframes fade-in { to { opacity: 1; } }
+
+        /* Logo Animation */
+        .logo-wrapper {
+            position: relative;
+            width: 150px;
+            height: 150px;
+            margin: 0 auto;
+        }
+        .animated-logo {
+            width: 150px;
+            height: 150px;
+            position: relative;
+            z-index: 2;
+        }
+        .logo-shield-fg {
+            fill: none;
+            stroke: #F9A825; /* Gold Color */
+            stroke-width: 4;
+            stroke-dasharray: 400;
+            stroke-dashoffset: 400;
+            animation: draw-shield 1.5s ease-out 0.5s forwards;
+        }
+        .internal-ripple {
+            fill: #F9A825;
+            opacity: 0;
+            animation: internal-ripple-effect 1.2s ease-out 1.5s forwards;
+        }
+        .logo-check {
+            fill: none;
+            stroke: #4CAF50; /* Green Color */
+            stroke-width: 6;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            stroke-dasharray: 100;
+            stroke-dashoffset: 100;
+            animation: draw-check 0.8s ease-out 2s forwards;
+        }
+
+        .glow {
+            opacity: 0; /* Hidden by default */
+            animation: pulse-glow 2s ease-in-out infinite alternate 2.8s;
+        }
+        @keyframes draw-shield { to { stroke-dashoffset: 0; } }
+        @keyframes internal-ripple-effect {
+            0% { r: 0; opacity: 0.6; }
+            90% { r: 40; opacity: 0.1; }
+            100% { r: 45; opacity: 0; }
+        }
+        @keyframes draw-check { to { stroke-dashoffset: 0; } }
+        @keyframes pulse-glow {
+            from { opacity: 0.3; }
+            to { opacity: 1; }
+        }
+
+        /* Text & Button Animation */
+        .app-title h1, .app-slogan p, .enter-button {
+            opacity: 0;
+            transform: translateY(20px);
+        }
+        .app-title h1 {
+            color: white; font-size: 3em; font-weight: 600;
+            animation: slide-up-fade-in 1s ease 3s forwards;
+        }
+        .app-slogan p {
+            font-size: 1.2em; color: var(--medium-grey);
+            animation: slide-up-fade-in 1s ease 3.3s forwards;
+        }
+        .enter-button {
+            margin-top: 2rem;
+            animation: slide-up-fade-in 1s ease 3.6s forwards;
+        }
+        @keyframes slide-up-fade-in {
+            to { opacity: 1; transform: translateY(0); }
+        }
+    </style>
+</head>
+<body>
+    <div class="splash-container">
+        <div class="logo-wrapper">
+             <svg class="animated-logo" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                    <filter id="gold-glow-filter">
+                        <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                    <filter id="green-glow-filter">
+                        <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+                        <feMerge>
+                            <feMergeNode in="coloredBlur"/>
+                            <feMergeNode in="SourceGraphic"/>
+                        </feMerge>
+                    </filter>
+                </defs>
+                <circle class="internal-ripple" cx="50" cy="50" r="0"/>
+                <path class="logo-shield-fg glow" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z" filter="url(#gold-glow-filter)"/>
+                <polyline class="logo-check glow" points="30,55 45,70 70,40" filter="url(#green-glow-filter)"/>
+                <path class="logo-shield-fg" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z"/>
+                <polyline class="logo-check" points="30,55 45,70 70,40"/>
+            </svg>
+        </div>
+        <div class="app-title">
+            <h1>Aegis Cloud Scanner</h1>
+        </div>
+        <div class="app-slogan">
+            <p>Your Shield in the Multi-Cloud.</p>
+        </div>
+        <div class="enter-button">
+            <a href="{{ url_for('version_selection') }}" class="button" style="padding: 0.8rem 2rem; font-size: 1.1em;">Enter</a>
+        </div>
+    </div>
+</body>
+</html>

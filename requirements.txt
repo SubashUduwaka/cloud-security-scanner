@@ -1,0 +1,81 @@
+# Core Flask dependencies - tested versions for Python 3.13 compatibility
+Flask==3.0.0
+Flask-SQLAlchemy==3.1.1
+Flask-Migrate==4.0.5
+Flask-Cors==4.0.0
+Flask-Login==0.6.3
+Flask-Bcrypt==1.0.1
+Flask-Mail==0.9.1
+Flask-Limiter==3.5.0
+Flask-Talisman==1.1.0
+Flask-WTF==1.2.1
+
+# Cloud SDKs - specific versions that build properly
+boto3==1.34.0
+google-cloud-storage==2.10.0
+google-api-python-client==2.108.0
+google-cloud-resource-manager==1.10.4
+google-cloud-compute==1.14.1
+google-cloud-kms==2.19.2
+
+# Azure SDKs - compatible versions for comprehensive cloud scanning
+azure-identity==1.15.0
+azure-mgmt-resource==23.0.1
+azure-mgmt-storage==21.0.0
+azure-mgmt-compute==30.0.0
+azure-mgmt-network==25.0.0
+azure-mgmt-sql==3.0.1
+azure-mgmt-keyvault==10.2.3
+azure-mgmt-monitor==6.0.2
+azure-mgmt-security==6.0.0
+azure-mgmt-web==7.2.0
+azure-mgmt-subscription==3.1.1
+
+# Security & Cryptography - stable versions
+cryptography
+PyJWT==2.8.0
+bcrypt==4.1.2
+pyotp==2.9.0
+qrcode==7.4.2
+Pillow==10.4.0
+
+# Input Validation & Sanitization
+cerberus==1.3.5
+bleach==6.1.0
+validators==0.22.0
+
+# Password Security - using built-in validation for Python 3.13 compatibility
+# zxcvbn==4.4.28  # Disabled due to Python 3.13 compatibility issues
+
+# Utilities - compatible versions
+python-dotenv==1.0.0
+waitress==2.1.2
+structlog==23.2.0
+requests==2.31.0
+itsdangerous==2.1.2
+Jinja2==3.1.2
+MarkupSafe==2.1.3
+click==8.1.7
+APScheduler==3.10.4
+
+# Chatbot
+google-generativeai==0.3.2
+
+# System monitoring - cross-platform compatible
+psutil==5.9.6
+
+# Performance improvements - optional
+redis==5.0.1
+celery==5.3.4
+flask-caching==2.1.0
+
+# Production database support
+psycopg2-binary==2.9.10
+
+# Alternative to WeasyPrint (which often has build issues)
+# Use reportlab instead for PDF generation
+reportlab==4.0.7
+
+# Production server requirements
+gunicorn==21.2.0
+supervisor==4.2.5

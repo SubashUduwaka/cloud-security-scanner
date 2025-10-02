@@ -1,0 +1,1150 @@
+{% extends "layout.html" %}
+{% block title %}Settings - Aegis{% endblock %}
+
+{% block content %}
+<div class="card" style="max-width: 800px; margin: auto;" data-aos="fade-up">
+    {% if session.get('guest_mode') %}
+    <h2><i class="fas fa-user-clock"></i> Guest Settings</h2>
+    <p>Configure credentials for cloud scanning. Note: All data will be deleted when your session expires.</p>
+    
+    <div class="guest-warning-banner" style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 15px; margin-bottom: 20px; display: flex; align-items: center; gap: 12px;">
+        <i class="fas fa-exclamation-triangle" style="color: #dc3545; font-size: 18px;"></i>
+        <div style="color: #721c24;">
+            <strong>Guest Mode - Temporary Session</strong><br>
+            <small>Some features are disabled in guest mode. All data will be permanently deleted when your session expires.</small>
+        </div>
+    </div>
+    {% else %}
+    <h2><i class="fas fa-user-cog"></i> User Settings</h2>
+    <p>Manage your account preferences, security settings, and cloud integrations.</p>
+    {% endif %}
+
+    {% if not session.get('guest_mode') %}
+    <!-- Account Information Section -->
+    <div class="settings-section" id="account-info-section">
+        <h3><i class="fas fa-user-circle"></i> Account Information</h3>
+        <p>View your account details and subscription status.</p>
+
+        <div class="account-info-grid">
+            <div class="account-info-card">
+                <h4><i class="fas fa-id-card"></i> Profile Details</h4>
+                <div class="info-row">
+                    <span class="info-label">Username:</span>
+                    <span class="info-value">{{ current_user.username }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Email:</span>
+                    <span class="info-value">{{ current_user.email }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Member Since:</span>
+                    <span class="info-value">{{ current_user.created_date.strftime('%B %d, %Y') if current_user.created_date else 'N/A' }}</span>
+                </div>
+                <div class="info-row">
+                    <span class="info-label">Last Login:</span>
+                    <span class="info-value">{{ current_user.last_login_date.strftime('%B %d, %Y at %I:%M %p') if current_user.last_login_date else 'Never' }}</span>
+                </div>
+            </div>
+
+            <div class="account-info-card">
+                <h4><i class="fas fa-crown"></i> Current Version</h4>
+                {% if current_user.is_pro_user() %}
+                <div class="subscription-status pro-status">
+                    <div class="status-badge pro">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Pro Account</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">License Status:</span>
+                        <span class="info-value status-active">
+                            <i class="fas fa-circle"></i> Active
+                        </span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Monthly Scans:</span>
+                        <span class="info-value">Unlimited</span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="subscription-status basic-status">
+                    <div class="status-badge basic">
+                        <i class="fas fa-user"></i>
+                        <span>Basic Account (Free)</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Monthly Scans:</span>
+                        <span class="info-value">{{ current_user.monthly_scans_used }}/{{ current_user.allowed_monthly_scans }} used</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Usage Resets:</span>
+                        <span class="info-value">Monthly from registration date</span>
+                    </div>
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+
+    <!-- License Management Section -->
+    <div class="settings-section" id="license-management-section">
+        <h3><i class="fas fa-key"></i> License Management</h3>
+        <p>Manage your Aegis Pro license - activate, deactivate, or request a new license.</p>
+
+        <div class="license-management-grid">
+            <!-- Current License Status -->
+            <div class="license-status-card">
+                <h4><i class="fas fa-info-circle"></i> License Status</h4>
+                {% if current_user.is_pro_user() %}
+                <div class="license-info-box pro">
+                    <div class="license-badge active">
+                        <i class="fas fa-check-circle"></i>
+                        <span>Pro License Active</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">License Key:</span>
+                        <span class="info-value"><code>{{ current_user.license_key }}</code></span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Activated On:</span>
+                        <span class="info-value">{{ current_user.license_validated_at.strftime('%B %d, %Y') if current_user.license_validated_at else 'N/A' }}</span>
+                    </div>
+                    <div class="info-row">
+                        <span class="info-label">Type:</span>
+                        <span class="info-value">Permanent License</span>
+                    </div>
+                </div>
+                {% else %}
+                <div class="license-info-box basic">
+                    <div class="license-badge inactive">
+                        <i class="fas fa-times-circle"></i>
+                        <span>No Active License</span>
+                    </div>
+                    <p style="margin-top: 15px; color: #666;">You are currently using the Basic (Free) version. Activate a Pro license below to unlock all features.</p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- License Actions -->
+            <div class="license-actions-card">
+                <h4><i class="fas fa-cog"></i> License Actions</h4>
+
+                {% if current_user.is_pro_user() %}
+                <!-- Deactivate License -->
+                <div class="license-action-box">
+                    <h5><i class="fas fa-ban"></i> Deactivate License</h5>
+                    <p>Remove your Pro license and revert to Basic version.</p>
+                    <form method="POST" action="{{ url_for('settings') }}" onsubmit="return confirm('Are you sure you want to deactivate your Pro license? You will lose access to Pro features.');">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                        <input type="hidden" name="form_name" value="deactivate_license">
+                        <button type="submit" class="button button-warning">
+                            <i class="fas fa-ban"></i> Deactivate Pro License
+                        </button>
+                    </form>
+                </div>
+                {% else %}
+                <!-- Activate License -->
+                <div class="license-action-box">
+                    <h5><i class="fas fa-unlock"></i> Activate Pro License</h5>
+                    <p>Enter your license key to unlock all Pro features.</p>
+                    <form method="POST" action="{{ url_for('settings') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                        <input type="hidden" name="form_name" value="activate_license">
+                        <div class="form-group">
+                            <label for="license_key">License Key</label>
+                            <input type="text" name="license_key" id="license_key" placeholder="AEGIS-XXXX-XXXX-XXXX-XXXX" required maxlength="29" style="text-transform: uppercase;">
+                        </div>
+                        <button type="submit" class="button button-primary">
+                            <i class="fas fa-check"></i> Activate License
+                        </button>
+                    </form>
+                </div>
+                {% endif %}
+
+                <!-- Request License -->
+                <div class="license-action-box" style="margin-top: 20px;">
+                    <h5><i class="fas fa-envelope"></i> Request Pro License</h5>
+                    <p>Don't have a license? Request one from our team.</p>
+                    <form method="POST" action="{{ url_for('settings') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                        <input type="hidden" name="form_name" value="request_license">
+                        <div class="form-group">
+                            <label for="company">Company (Optional)</label>
+                            <input type="text" name="company" id="company" placeholder="Your company name">
+                        </div>
+                        <div class="form-group">
+                            <label for="message">Additional Message (Optional)</label>
+                            <textarea name="message" id="message" rows="3" placeholder="Tell us about your use case..."></textarea>
+                        </div>
+                        <button type="submit" class="button button-secondary">
+                            <i class="fas fa-paper-plane"></i> Request License
+                        </button>
+                    </form>
+                    <p style="margin-top: 10px; font-size: 12px; color: #666;">
+                        <i class="fas fa-info-circle"></i> Your request will be sent to <strong>aegis.aws.scanner@gmail.com</strong> from your registered email.
+                    </p>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-section" id="api-keys-section">
+        <h3><i class="fas fa-robot"></i> API Integrations</h3>
+        <p>Configure API keys and webhooks for third-party integrations.</p>
+        
+        <div class="sub-section">
+            <form method="POST" action="{{ url_for('settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                <input type="hidden" name="form_name" value="update_api_key">
+                <h4><i class="fas fa-brain"></i> AI Chatbot (Google Gemini)</h4>
+                
+                <div class="form-group-vertical">
+                    <label for="gemini_api_key"><strong>Gemini API Key</strong></label>
+                    
+                    {% if gemini_api_key %}
+                        <input type="text" class="form-control" value="Current Key: {{ gemini_api_key[:4] }}...{{ gemini_api_key[-4:] }}" disabled>
+                        <small>A key is already saved. Entering a new key below will overwrite it.</small>
+                    {% else %}
+                        <small>No API key is currently saved. Add your key to enable the AI Chatbot.</small>
+                    {% endif %}
+                    
+                    <input type="password" name="gemini_api_key" id="gemini_api_key" class="form-control" placeholder="Enter new Gemini API Key" style="margin-top: 0.5rem;">
+                </div>
+                
+                <button type="submit" class="button" style="margin-top: 1rem;"><i class="fas fa-save"></i> Save API Key</button>
+            </form>
+        </div>
+
+        <div class="sub-section" style="margin-top: 2rem;">
+            <form method="POST" action="{{ url_for('settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                <input type="hidden" name="form_name" value="update_notification_integrations">
+                <h4><i class="fas fa-paper-plane"></i> Notification Webhooks</h4>
+                
+                <div class="form-group-vertical">
+                    <label for="slack_webhook_url"><strong>Slack Webhook URL</strong></label>
+                    <input type="url" class="form-control" id="slack_webhook_url" name="slack_webhook_url" 
+                           placeholder="https://hooks.slack.com/services/..." 
+                           value="{{ current_user.slack_webhook_url | a_id_decrypt_filter if current_user.slack_webhook_url else '' }}">
+                    <small>Leave blank to disable Slack notifications.</small>
+                </div>
+                
+                <div class="form-group-vertical" style="margin-top: 1.5rem;">
+                    <label for="teams_webhook_url"><strong>Microsoft Teams Webhook URL</strong></label>
+                    <input type="url" class="form-control" id="teams_webhook_url" name="teams_webhook_url" 
+                           placeholder="https://your-tenant.webhook.office.com/..."
+                           value="{{ current_user.teams_webhook_url | a_id_decrypt_filter if current_user.teams_webhook_url else '' }}">
+                    <small>Leave blank to disable Teams notifications.</small>
+                </div>
+                
+                <button type="submit" class="button" style="margin-top: 1rem;"><i class="fas fa-save"></i> Save Webhook Settings</button>
+            </form>
+        </div>
+    </div>
+    {% endif %}
+
+    <div class="settings-section" id="credentials-section">
+        <h3><i class="fas fa-cloud"></i> Cloud Credential Management</h3>
+        <p>Add secure credential profiles for the scanner to use. Secret keys are encrypted and are never displayed again.</p>
+        
+        <div class="sub-section">
+            <form method="POST" action="{{ url_for('settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                <input type="hidden" name="form_name" value="add_cloud_credential">
+                <h4>Add New Profile</h4>
+                
+                <div class="form-group-vertical">
+                    <label for="providerSelect">Cloud Provider</label>
+                    <select name="provider" id="providerSelect" class="form-control">
+                        <option value="aws">Amazon Web Services (AWS)</option>
+                        <option value="gcp">Google Cloud Platform (GCP)</option>
+                        <option value="azure">Microsoft Azure</option>
+                    </select>
+
+                    <label for="profile_name" style="margin-top: 1rem;">Profile Name (e.g., "Personal AWS Account")</label>
+                    <input type="text" name="profile_name" class="form-control" required>
+                </div>
+
+                <div id="awsFields" class="form-group-vertical" style="margin-top: 1rem;">
+                    <label for="aws_access_key_id">AWS Access Key ID</label>
+                    <input type="text" name="aws_access_key_id" class="form-control">
+                    <label for="aws_secret_access_key">AWS Secret Access Key</label>
+                    <input type="password" name="aws_secret_access_key" class="form-control">
+                </div>
+
+                <div id="gcpFields" class="form-group-vertical" style="display: none; margin-top: 1rem;">
+                    <label for="gcp_service_account_json">GCP Service Account JSON Key</label>
+                    <textarea name="gcp_service_account_json" class="form-control" rows="5" placeholder="Paste the entire content of your JSON key file here."></textarea>
+                </div>
+
+                <div id="azureFields" class="form-group-vertical" style="display: none; margin-top: 1rem;">
+                    <label for="azure_subscription_id">Azure Subscription ID</label>
+                    <input type="text" name="azure_subscription_id" class="form-control" placeholder="e.g., 12345678-1234-1234-1234-123456789012">
+                    <label for="azure_tenant_id" style="margin-top: 0.5rem;">Azure Tenant ID</label>
+                    <input type="text" name="azure_tenant_id" class="form-control" placeholder="e.g., 87654321-4321-4321-4321-210987654321">
+                    <label for="azure_client_id" style="margin-top: 0.5rem;">Azure Client ID</label>
+                    <input type="text" name="azure_client_id" class="form-control" placeholder="Application (client) ID">
+                    <label for="azure_client_secret" style="margin-top: 0.5rem;">Azure Client Secret</label>
+                    <input type="password" name="azure_client_secret" class="form-control" placeholder="Client secret value">
+                    <small class="text-muted">Create an App Registration in Azure AD and generate a client secret.</small>
+                </div>
+
+                <button type="submit" class="button" style="margin-top: 1rem;"><i class="fas fa-plus-circle"></i> Add Profile</button>
+            </form>
+        </div>
+
+        <div class="sub-section" style="margin-top: 2rem;">
+            <h4>Saved Profiles</h4>
+            {% if credentials %}
+            <div class="table-container">
+                <table>
+                    <thead><tr><th>Profile Name</th><th>Provider</th><th>Identifier</th><th>Action</th></tr></thead>
+                    <tbody>
+                        {% for cred in credentials %}
+                        <tr>
+                            <td>{{ cred.profile_name }}</td>
+                            <td><span class="provider-tag-{{ cred.provider }}">{{ cred.provider.upper() }}</span></td>
+                            <td>{{ cred.encrypted_key_1 if cred.provider == 'gcp' else 'AKIA************' }}</td>
+                            <td>
+                                <form method="POST" action="{{ url_for('delete_credential', credential_id=cred.id) }}" onsubmit="return confirm('Are you sure you want to delete this profile?');">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                                    <button type="submit" class="button-danger button-small"><i class="fas fa-trash-alt"></i> Delete</button>
+                                </form>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+            {% else %}
+            <p>You have no saved credential profiles.</p>
+            {% endif %}
+        </div>
+    </div>
+
+    <div class="settings-section" id="security-section">
+        <h3><i class="fas fa-key"></i> Password & Security</h3>
+        <div class="sub-section">
+            <form method="POST" action="{{ url_for('settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                <input type="hidden" name="form_name" value="change_password">
+                <h4>Change Password</h4>
+                <div class="form-group-vertical">
+                    <label for="current_password">Current Password</label>
+                    <input type="password" name="current_password" class="form-control" required>
+                    <label for="new_password" style="margin-top: 1rem;">New Password</label>
+                    <input type="password" name="new_password" class="form-control password-strength-input" required>
+                    <div class="strength-bar-container"><div class="strength-bar"></div></div>
+                    <small class="strength-text"></small>
+                    <button type="submit" class="button"><i class="fas fa-exchange-alt"></i> Update Password</button>
+                </div>
+            </form>
+        </div>
+        <div class="sub-section" style="margin-top: 2rem;">
+            <h4>Session Timeout</h4>
+            <form method="POST" action="{{ url_for('settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                <input type="hidden" name="form_name" value="timeout">
+                <p>Automatically log out after a period of inactivity. (Value in minutes, between 5 and 120).</p>
+                <div class="form-group">
+                    <label for="inactivity_timeout">Inactivity Timeout:</label>
+                    <input type="number" name="inactivity_timeout" id="inactivity_timeout" value="{{ current_user.inactivity_timeout }}" min="5" max="120" class="form-control" required style="max-width: 100px;">
+                    <button type="submit" class="button"><i class="fas fa-save"></i> Save Timeout</button>
+                </div>
+            </form>
+        </div>
+        <div class="sub-section" style="margin-top: 2rem;">
+            <h4>Two-Factor Authentication (2FA)</h4>
+            {% if current_user.is_2fa_enabled %}
+                <p>2FA is currently <strong>enabled</strong> on your account.</p>
+                <form method="POST" action="{{ url_for('settings') }}">
+                     <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                     <input type="hidden" name="form_name" value="disable_2fa">
+                     <p>Disabling 2FA will reduce your account's security. Please enter your password to confirm.</p>
+                     <div class="form-group">
+                        <input type="password" name="password_2fa" placeholder="Enter Your Password" class="form-control" required style="max-width: 250px;">
+                        <button type="submit" class="button-danger" onclick="return confirm('Are you sure you want to disable 2FA?');"><i class="fas fa-times-circle"></i> Disable 2FA</button>
+                     </div>
+                </form>
+            {% else %}
+                <p>2FA is currently <strong>disabled</strong>. Add an extra layer of security to your account.</p>
+                <a href="{{ url_for('setup_2fa') }}" class="button"><i class="fas fa-check-circle"></i> Enable 2FA Now</a>
+            {% endif %}
+        </div>
+
+        {% if current_user.is_2fa_enabled %}
+        <div class="sub-section" style="margin-top: 2rem;">
+            <h4>Recovery Codes</h4>
+            <p>Backup recovery codes allow you to access your account if you lose your authenticator device.</p>
+            {% set recovery_codes = current_user.get_recovery_codes() %}
+            {% set used_codes = current_user.get_used_recovery_codes() %}
+            {% if recovery_codes %}
+                <div class="recovery-codes-status">
+                    <div class="alert alert-info">
+                        <i class="fas fa-info-circle"></i>
+                        <strong>Recovery Codes:</strong> {{ recovery_codes|length - used_codes|length }} of {{ recovery_codes|length }} codes remaining
+                        {% if used_codes|length >= recovery_codes|length - 2 %}
+                        <br><span class="text-warning"><i class="fas fa-exclamation-triangle"></i> Consider regenerating your codes soon.</span>
+                        {% endif %}
+                    </div>
+                    
+                    <form method="POST" action="{{ url_for('regenerate_recovery_codes') }}">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                        <div class="form-group">
+                            <label>Enter your password to regenerate recovery codes:</label>
+                            <input type="password" name="password" placeholder="Enter Your Password" class="form-control" required style="max-width: 250px;">
+                            <button type="submit" class="button-warning" onclick="return confirm('This will invalidate all existing recovery codes. Continue?');">
+                                <i class="fas fa-sync-alt"></i> Regenerate Codes
+                            </button>
+                        </div>
+                    </form>
+                </div>
+            {% else %}
+                <div class="alert alert-warning">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    No recovery codes found. They should have been generated when you enabled 2FA.
+                </div>
+            {% endif %}
+        </div>
+        {% endif %}
+    </div>
+    
+    <div class="settings-section" id="email-management">
+        <h3><i class="fas fa-envelope"></i> Email Management</h3>
+        <div class="sub-section">
+            <form method="POST" action="{{ url_for('settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                <input type="hidden" name="form_name" value="change_primary_email">
+                <h4>Primary Email Address</h4>
+                <p>Your current primary email is <strong>{{ current_user.email }}</strong>. To change it, enter a new email and your current password.</p>
+                <div class="form-group-vertical">
+                    <label for="new_email">New Email Address</label>
+                    <input type="email" name="new_email" class="form-control" required>
+                    <label for="password_email_change" style="margin-top: 1rem;">Current Password</label>
+                    <input type="password" name="password" id="password_email_change" class="form-control" required>
+                    <button type="submit" class="button"><i class="fas fa-paper-plane"></i> Send Verification</button>
+                </div>
+            </form>
+        </div>
+        <div class="sub-section" style="margin-top: 2rem;">
+            <form method="POST" action="{{ url_for('settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                <input type="hidden" name="form_name" value="add_backup_email">
+                <h4>Backup Email for Recovery</h4>
+                {% if current_user.backup_email_verified %}<p>Your verified backup email is <strong>{{ current_user.backup_email }}</strong>.</p>{% else %}<p>Add a backup email for account recovery.</p>{% endif %}
+                <div class="form-group-vertical">
+                    <label for="backup_email">New Backup Email</label>
+                    <input type="email" name="backup_email" class="form-control" required>
+                    <label for="password_backup_email" style="margin-top: 1rem;">Current Password</label>
+                    <input type="password" name="password" id="password_backup_email" class="form-control" required>
+                    <button type="submit" class="button"><i class="fas fa-plus-circle"></i> Add/Update Backup Email</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div class="settings-section" id="notifications-section">
+        <h3><i class="fas fa-bell"></i> Notification Preferences</h3>
+        <div class="sub-section">
+            <form method="POST" action="{{ url_for('settings') }}">
+                <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+                <input type="hidden" name="form_name" value="notification_settings">
+
+                <div class="notification-item">
+                    <div class="notification-details">
+                        <h6>Email Notifications</h6>
+                        <p>Enable or disable all email notifications.</p>
+                    </div>
+                    <div class="notification-toggle">
+                        <label class="switch">
+                            <input type="checkbox" name="notifications_enabled" {% if current_user.notifications_enabled %}checked{% endif %}>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="notification-item">
+                    <div class="notification-details">
+                        <h6>Scan Completion Alerts</h6>
+                        <p>Get notified when scans finish running.</p>
+                    </div>
+                    <div class="notification-toggle">
+                        <label class="switch">
+                            <input type="checkbox" name="email_on_scan_complete" {% if current_user.email_on_scan_complete %}checked{% endif %}>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="notification-item">
+                    <div class="notification-details">
+                        <h6>Critical Finding Alerts</h6>
+                        <p>Receive immediate alerts for critical security issues.</p>
+                    </div>
+                    <div class="notification-toggle">
+                        <label class="switch">
+                            <input type="checkbox" name="email_on_critical_findings" {% if current_user.email_on_critical_findings %}checked{% endif %}>
+                            <span class="switch-slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="notification-item">
+                    <div class="notification-details">
+                        <h6>PDF Report Schedule</h6>
+                        <p>Automatically email PDF reports of your scan results.</p>
+                    </div>
+                    <div class="notification-toggle">
+                        <select name="report_schedule" class="form-control-filter">
+                            <option value="disabled" {% if current_user.report_schedule == 'disabled' %}selected{% endif %}>Disabled</option>
+                            <option value="weekly" {% if current_user.report_schedule == 'weekly' %}selected{% endif %}>Weekly</option>
+                            <option value="monthly" {% if current_user.report_schedule == 'monthly' %}selected{% endif %}>Monthly</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <button type="submit" class="button" style="margin-top: 1.5rem;">
+                    <i class="fas fa-save"></i> Save Notification Settings
+                </button>
+            </form>
+        </div>
+    </div>
+
+    <div class="settings-section" id="health-check-section">
+        <h3><i class="fas fa-stethoscope"></i> Application Health Check</h3>
+        <p>Run comprehensive health checks to ensure all application components are functioning correctly.</p>
+        
+        <div class="sub-section">
+            <div class="health-check-container">
+                <div class="health-check-controls">
+                    <button type="button" class="action-btn primary" onclick="runHealthCheck()" id="healthCheckBtn">
+                        <i class="fas fa-play-circle"></i> Run Health Check
+                    </button>
+                    <button type="button" class="action-btn secondary" onclick="runQuickCheck()" id="quickCheckBtn">
+                        <i class="fas fa-bolt"></i> Quick Check
+                    </button>
+                </div>
+                
+                <div id="healthCheckResults" class="health-check-results" style="display: none;">
+                    <div class="health-check-progress">
+                        <div class="progress-bar-container">
+                            <div id="healthCheckProgressBar" class="progress-bar-inner animated-progress"></div>
+                        </div>
+                        <div id="healthCheckStatus" class="health-check-status">Initializing health check...</div>
+                    </div>
+                    
+                    <div id="healthCheckDetails" class="health-check-details">
+                        <div class="health-component" id="health-database">
+                            <div class="health-icon"><i class="fas fa-database"></i></div>
+                            <div class="health-info">
+                                <span class="health-label">Database Connection</span>
+                                <span class="health-status">Checking...</span>
+                            </div>
+                            <div class="health-indicator"><i class="fas fa-spinner fa-spin"></i></div>
+                        </div>
+                        
+                        <div class="health-component" id="health-scanner">
+                            <div class="health-icon"><i class="fas fa-search"></i></div>
+                            <div class="health-info">
+                                <span class="health-label">Scanner Engine</span>
+                                <span class="health-status">Checking...</span>
+                            </div>
+                            <div class="health-indicator"><i class="fas fa-spinner fa-spin"></i></div>
+                        </div>
+                        
+                        <div class="health-component" id="health-credentials">
+                            <div class="health-icon"><i class="fas fa-key"></i></div>
+                            <div class="health-info">
+                                <span class="health-label">Credential Encryption</span>
+                                <span class="health-status">Checking...</span>
+                            </div>
+                            <div class="health-indicator"><i class="fas fa-spinner fa-spin"></i></div>
+                        </div>
+                        
+                        <div class="health-component" id="health-email">
+                            <div class="health-icon"><i class="fas fa-envelope"></i></div>
+                            <div class="health-info">
+                                <span class="health-label">Email Service</span>
+                                <span class="health-status">Checking...</span>
+                            </div>
+                            <div class="health-indicator"><i class="fas fa-spinner fa-spin"></i></div>
+                        </div>
+                        
+                        <div class="health-component" id="health-scheduler">
+                            <div class="health-icon"><i class="fas fa-clock"></i></div>
+                            <div class="health-info">
+                                <span class="health-label">Task Scheduler</span>
+                                <span class="health-status">Checking...</span>
+                            </div>
+                            <div class="health-indicator"><i class="fas fa-spinner fa-spin"></i></div>
+                        </div>
+                        
+                        <div class="health-component" id="health-api">
+                            <div class="health-icon"><i class="fas fa-robot"></i></div>
+                            <div class="health-info">
+                                <span class="health-label">AI Chatbot API</span>
+                                <span class="health-status">Checking...</span>
+                            </div>
+                            <div class="health-indicator"><i class="fas fa-spinner fa-spin"></i></div>
+                        </div>
+                    </div>
+                    
+                    <div id="healthCheckSummary" class="health-check-summary" style="display: none;">
+                        <div class="summary-item">
+                            <span class="summary-icon"><i class="fas fa-check-circle"></i></span>
+                            <span class="summary-text">System Status: <span id="overallStatus">Checking...</span></span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-icon"><i class="fas fa-tasks"></i></span>
+                            <span class="summary-text">Components Passed: <span id="passedCount">0</span>/<span id="totalCount">0</span></span>
+                        </div>
+                        <div class="summary-item">
+                            <span class="summary-icon"><i class="fas fa-clock"></i></span>
+                            <span class="summary-text">Check Duration: <span id="checkDuration">0s</span></span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-section" id="suppression-management">
+        <h3><i class="fas fa-eye-slash"></i> Suppression Management</h3>
+        <p>View and manage findings that you have previously suppressed.</p>
+        <div class="sub-section">
+            <div class="table-container-scrollable">
+                <table id="suppressedFindingsTable">
+                    <thead>
+                        <tr>
+                            <th>Service</th>
+                            <th>Resource</th>
+                            <th>Issue</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% if suppressed_findings %}
+                            {% for finding in suppressed_findings %}
+                            <tr>
+                                <td>{{ finding.service }}</td>
+                                <td>{{ finding.resource }}</td>
+                                <td>{{ finding.issue }}</td>
+                                <td>
+                                    <button class="button-secondary button-small unsuppress-btn" data-suppression-id="{{ finding.id }}">
+                                        <i class="fas fa-eye"></i> Un-suppress
+                                    </button>
+                                </td>
+                            </tr>
+                            {% endfor %}
+                        {% else %}
+                            <tr>
+                                <td colspan="4" style="text-align: center;">You have no suppressed findings.</td>
+                            </tr>
+                        {% endif %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <div class="settings-section" id="application-control">
+        <h3><i class="fas fa-sliders-h"></i> Application Control & Advanced Settings</h3>
+        <p>Configure advanced application behavior, security policies, and system controls.</p>
+        
+        <div class="sub-section">
+            <h4><i class="fas fa-shield-alt"></i> Security Policies</h4>
+            <div class="control-grid">
+                <div class="control-item">
+                    <div class="control-info">
+                        <h5>Session Security</h5>
+                        <p>Configure session timeout and security settings</p>
+                    </div>
+                    <div class="control-actions">
+                        <select class="form-control" id="sessionTimeout">
+                            <option value="30">30 minutes</option>
+                            <option value="60" selected>1 hour</option>
+                            <option value="240">4 hours</option>
+                            <option value="480">8 hours</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-info">
+                        <h5>Guest Mode Settings</h5>
+                        <p>Control guest session duration and access</p>
+                    </div>
+                    <div class="control-actions">
+                        <label class="switch">
+                            <input type="checkbox" id="guestModeEnabled" checked>
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-info">
+                        <h5>Rate Limiting</h5>
+                        <p>API request rate limits per user</p>
+                    </div>
+                    <div class="control-actions">
+                        <select class="form-control" id="rateLimit">
+                            <option value="100">100 req/min</option>
+                            <option value="200" selected>200 req/min</option>
+                            <option value="500">500 req/min</option>
+                            <option value="1000">1000 req/min</option>
+                        </select>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sub-section">
+            <h4><i class="fas fa-database"></i> Data Management</h4>
+            <div class="control-grid">
+                <div class="control-item">
+                    <div class="control-info">
+                        <h5>Auto-cleanup Old Scans</h5>
+                        <p>Automatically remove scan data older than specified period</p>
+                    </div>
+                    <div class="control-actions">
+                        <select class="form-control" id="dataRetention">
+                            <option value="30">30 days</option>
+                            <option value="90" selected>90 days</option>
+                            <option value="180">180 days</option>
+                            <option value="365">1 year</option>
+                            <option value="0">Never</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-info">
+                        <h5>Database Maintenance</h5>
+                        <p>Automatic database optimization and cleanup</p>
+                    </div>
+                    <div class="control-actions">
+                        <button class="button-secondary" onclick="runDatabaseMaintenance()">
+                            <i class="fas fa-tools"></i> Run Now
+                        </button>
+                    </div>
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-info">
+                        <h5>Export Data</h5>
+                        <p>Export all application data for backup or migration</p>
+                    </div>
+                    <div class="control-actions">
+                        <button class="button" onclick="exportApplicationData()">
+                            <i class="fas fa-download"></i> Export
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sub-section">
+            <h4><i class="fas fa-cog"></i> System Behavior</h4>
+            <div class="control-grid">
+                <div class="control-item">
+                    <div class="control-info">
+                        <h5>Concurrent Scans</h5>
+                        <p>Maximum number of simultaneous scans allowed</p>
+                    </div>
+                    <div class="control-actions">
+                        <select class="form-control" id="maxConcurrentScans">
+                            <option value="1">1 scan</option>
+                            <option value="2" selected>2 scans</option>
+                            <option value="3">3 scans</option>
+                            <option value="5">5 scans</option>
+                        </select>
+                    </div>
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-info">
+                        <h5>Debug Mode</h5>
+                        <p>Enable detailed logging and debugging features</p>
+                    </div>
+                    <div class="control-actions">
+                        <label class="switch">
+                            <input type="checkbox" id="debugMode">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+                
+                <div class="control-item">
+                    <div class="control-info">
+                        <h5>Maintenance Mode</h5>
+                        <p>Temporarily disable access for system maintenance</p>
+                    </div>
+                    <div class="control-actions">
+                        <label class="switch">
+                            <input type="checkbox" id="maintenanceMode">
+                            <span class="slider"></span>
+                        </label>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="sub-section">
+            <h4><i class="fas fa-save"></i> Save Configuration</h4>
+            <p>Apply all configuration changes to the system.</p>
+            <button class="button button-large" onclick="saveApplicationSettings()">
+                <i class="fas fa-save"></i> Save All Settings
+            </button>
+        </div>
+    </div>
+
+    {% if not session.get('guest_mode') %}
+    <div class="settings-section" id="data-management">
+        <h3><i class="fas fa-trash-alt"></i> Data Management</h3>
+        <p>Manage your scan data and account information. Be careful - these actions cannot be undone.</p>
+        
+        <div class="sub-section">
+            <h4><i class="fas fa-database"></i> Reset User Data</h4>
+            <div class="control-grid">
+                <div class="control-item" style="border-left-color: #dc3545;">
+                    <div class="control-info">
+                        <h5 style="color: #dc3545;">Reset All Data</h5>
+                        <p>Delete all your scan results, credentials, and settings. This action cannot be undone.</p>
+                        <small style="color: #dc3545; font-weight: bold;">⚠️ WARNING: This will permanently delete all your data except your account.</small>
+                    </div>
+                    <div class="control-actions">
+						<button type="button" class="button" style="background-color: #dc3545; border-color: #dc3545;" onclick="showDataResetModal()" data-modal-target="dataResetModal">
+                            <i class="fas fa-trash-alt"></i> Reset Data
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+
+<div id="dataResetModal" class="modal" style="display: none;">
+    <div class="modal-content card">
+        <span class="modal-close-btn" onclick="closeDataResetModal()">&times;</span>
+        <h2 style="color: #dc3545;"><i class="fas fa-exclamation-triangle"></i> Confirm Data Reset</h2>
+        <div style="background: #f8d7da; border: 1px solid #f5c6cb; border-radius: 8px; padding: 15px; margin: 20px 0; color: #721c24;">
+            <strong>⚠️ PERMANENT ACTION WARNING</strong><br>
+            <p style="margin: 8px 0 0 0;">This action will permanently delete:</p>
+            <ul style="margin: 8px 0 0 20px; padding: 0;">
+                <li>All scan results and history</li>
+                <li>All cloud credentials</li>
+                <li>All personal settings and preferences</li>
+                <li>All suppressed findings</li>
+                <li>All notifications and reports</li>
+            </ul>
+            <p style="margin: 8px 0 0 0; font-weight: bold;">Your account and login credentials will NOT be deleted.</p>
+        </div>
+        
+        <form id="dataResetForm" method="POST" action="/api/v1/user/reset-data" onsubmit="confirmDataReset(event)">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token_value }}">
+            <div class="form-group-vertical">
+                <label for="confirmPassword" style="font-weight: bold;">Enter your password to confirm:</label>
+                <input type="password" name="password" id="confirmPassword" class="form-control" placeholder="Enter your current password" required>
+                <small>This action requires your password for security verification.</small>
+            </div>
+            
+            <div style="margin: 20px 0;">
+                <label>
+                    <input type="checkbox" name="confirm_reset" id="confirmReset" value="yes" required>
+                    I understand this action is permanent and cannot be undone
+                </label>
+            </div>
+            
+            <div class="modal-actions" style="display: flex; gap: 1rem; justify-content: flex-end; margin-top: 20px;">
+                <button type="button" class="button-secondary" onclick="closeDataResetModal()">
+                    Cancel
+                </button>
+                <button type="submit" class="button" style="background-color: #dc3545; border-color: #dc3545;" id="resetDataButton">
+                    <i class="fas fa-trash-alt"></i> Reset All Data
+                </button>
+            </div>
+        </form>
+    </div>
+</div>
+
+<style>
+    .settings-section { margin-top: 2.5rem; padding-top: 2rem; border-top: 1px solid var(--border-color); }
+    .settings-section:first-child { margin-top: 0; padding-top: 0; border-top: none; }
+    .settings-section h3 { color: var(--dark-grey); }
+    body.dark-mode .settings-section h3 { color: var(--dark-grey); }
+    .settings-section h4 { margin-top: 0; margin-bottom: 1rem; color: var(--primary-color); font-size: 1.1em; }
+    .sub-section { padding-left: 1rem; border-left: 3px solid var(--light-grey); margin-top: 1.5rem; }
+    body.dark-mode .sub-section { border-left-color: #4A5568; }
+    .form-group { display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+    .form-group-vertical { display: flex; flex-direction: column; gap: 0.5rem; max-width: 400px; }
+    .form-group-vertical button { margin-top: 0.5rem; }
+    .form-control { width: 100%; padding: 0.8rem; border: 1px solid var(--border-color); border-radius: var(--border-radius); background-color: var(--card-bg); color: var(--dark-grey); box-sizing: border-box; }
+    body.dark-mode .form-control { background-color: #4A5568; border-color: #566573; color: var(--dark-grey); }
+    
+    /* FIX: Font size issue in notification section */
+    .notification-details h6 {
+        font-size: 1.0em; /* Make header slightly smaller */
+        margin: 0 0 0.25rem 0;
+        color: var(--dark-grey);
+    }
+    .notification-details p {
+        font-size: 0.9em; /* Make sub-text larger */
+        margin: 0;
+        color: var(--medium-grey);
+    }
+    
+    /* Application Control Styles */
+    .control-grid {
+        display: grid;
+        gap: 1.5rem;
+        margin-top: 1rem;
+    }
+    
+    .control-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 1.5rem;
+        background: #f8f9fa;
+        border-radius: 8px;
+        border-left: 4px solid var(--primary-color);
+    }
+    
+    body.dark-mode .control-item {
+        background: #4A5568;
+    }
+    
+    .control-info h5 {
+        margin: 0 0 0.5rem 0;
+        color: var(--primary-color);
+        font-size: 1.1rem;
+    }
+    
+    .control-info p {
+        margin: 0;
+        color: #666;
+        font-size: 0.9rem;
+    }
+    
+    body.dark-mode .control-info p {
+        color: #B0B0B0;
+    }
+    
+    .control-actions {
+        display: flex;
+        align-items: center;
+        gap: 1rem;
+    }
+    
+    /* Toggle Switch Styles */
+    .switch {
+        position: relative;
+        display: inline-block;
+        width: 60px;
+        height: 34px;
+    }
+    
+    .switch input {
+        opacity: 0;
+        width: 0;
+        height: 0;
+    }
+    
+    .slider {
+        position: absolute;
+        cursor: pointer;
+        top: 0;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        background-color: #ccc;
+        transition: .4s;
+        border-radius: 34px;
+    }
+    
+    .slider:before {
+        position: absolute;
+        content: "";
+        height: 26px;
+        width: 26px;
+        left: 4px;
+        bottom: 4px;
+        background-color: white;
+        transition: .4s;
+        border-radius: 50%;
+    }
+    
+    input:checked + .slider {
+        background-color: var(--primary-color);
+    }
+    
+    input:checked + .slider:before {
+        transform: translateX(26px);
+    }
+    
+    .button-large {
+        padding: 1rem 2rem;
+        font-size: 1.1rem;
+        min-width: 200px;
+    }
+    
+    @media (max-width: 768px) {
+        .control-item {
+            flex-direction: column;
+            align-items: flex-start;
+            gap: 1rem;
+        }
+        
+        .control-actions {
+            width: 100%;
+            justify-content: flex-end;
+        }
+    }
+</style>
+
+<script>
+// Cloud provider field switching
+document.addEventListener('DOMContentLoaded', function() {
+    const providerSelect = document.getElementById('providerSelect');
+    const awsFields = document.getElementById('awsFields');
+    const gcpFields = document.getElementById('gcpFields');
+    const azureFields = document.getElementById('azureFields');
+    
+    if (providerSelect && awsFields && gcpFields && azureFields) {
+        providerSelect.addEventListener('change', function() {
+            const provider = this.value;
+            
+            // Hide all fields first
+            awsFields.style.display = 'none';
+            gcpFields.style.display = 'none';
+            azureFields.style.display = 'none';
+            
+            // Show relevant fields
+            if (provider === 'aws') {
+                awsFields.style.display = 'block';
+            } else if (provider === 'gcp') {
+                gcpFields.style.display = 'block';
+            } else if (provider === 'azure') {
+                azureFields.style.display = 'block';
+            }
+        });
+    }
+});
+
+// Missing modal JavaScript functions for data reset functionality
+function showDataResetModal() {
+    const modal = document.getElementById('dataResetModal');
+    if (modal) {
+        modal.style.display = 'flex';
+        // Clear previous input
+        const passwordInput = document.getElementById('confirmPassword');
+        const checkbox = document.getElementById('confirmReset');
+        if (passwordInput) passwordInput.value = '';
+        if (checkbox) checkbox.checked = false;
+    }
+}
+
+function closeDataResetModal() {
+    const modal = document.getElementById('dataResetModal');
+    if (modal) {
+        modal.style.display = 'none';
+        // Clear form data
+        const form = document.getElementById('dataResetForm');
+        if (form) form.reset();
+    }
+}
+
+function confirmDataReset(event) {
+    event.preventDefault();
+    
+    const passwordInput = document.getElementById('confirmPassword');
+    const checkbox = document.getElementById('confirmReset');
+    const submitButton = document.getElementById('resetDataButton');
+    
+    // Validate inputs
+    if (!passwordInput || !passwordInput.value.trim()) {
+        alert('Please enter your password to confirm this action.');
+        return false;
+    }
+    
+    if (!checkbox || !checkbox.checked) {
+        alert('Please confirm that you understand this action is permanent.');
+        return false;
+    }
+    
+    // Double confirmation with browser dialog
+    const confirmed = confirm(
+        'FINAL CONFIRMATION\n\n' +
+        'This will permanently delete ALL your data including:\n' +
+        '• All scan results and history\n' +
+        '• All cloud credentials\n' +
+        '• All settings and preferences\n' +
+        '• All reports and notifications\n\n' +
+        'This action CANNOT be undone!\n\n' +
+        'Are you absolutely sure you want to continue?'
+    );
+    
+    if (!confirmed) {
+        return false;
+    }
+    
+    // Disable submit button to prevent double submission
+    if (submitButton) {
+        submitButton.disabled = true;
+        submitButton.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Resetting Data...';
+    }
+    
+    // Submit the form
+    const form = document.getElementById('dataResetForm');
+    if (form) {
+        const formData = new FormData(form);
+        
+        fetch('/api/v1/user/reset-data', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                alert('✅ All data has been successfully reset. You will be redirected to the dashboard.');
+                closeDataResetModal();
+                // Redirect to dashboard after successful reset
+                window.location.href = '/dashboard';
+            } else {
+                throw new Error(data.error || 'Failed to reset data');
+            }
+        })
+        .catch(error => {
+            console.error('Data reset error:', error);
+            alert('❌ Failed to reset data: ' + error.message);
+        })
+        .finally(() => {
+            // Re-enable submit button
+            if (submitButton) {
+                submitButton.disabled = false;
+                submitButton.innerHTML = '<i class="fas fa-trash-alt"></i> Reset All Data';
+            }
+        });
+    }
+    
+    return false;
+}
+
+// Close modal when clicking outside
+document.addEventListener('DOMContentLoaded', function() {
+    const modal = document.getElementById('dataResetModal');
+    if (modal) {
+        modal.addEventListener('click', function(e) {
+            if (e.target === modal) {
+                closeDataResetModal();
+            }
+        });
+    }
+});
+</script>
+
+{% endblock %}

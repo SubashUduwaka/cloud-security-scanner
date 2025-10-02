@@ -1,0 +1,383 @@
+{% extends "auth_layout.html" %}
+{% block title %}Set Up 2FA - Aegis{% endblock %}
+
+{% block content %}
+<div class="auth-wrapper">
+    <div class="auth-container">
+        <div class="setup-header">
+            <div class="setup-logo">
+                <svg class="animated-logo-setup" viewBox="0 0 100 100" xmlns="http://www.w3.org/2000/svg">
+                    <defs>
+                        <filter id="setup-gold-glow">
+                            <feGaussianBlur stdDeviation="1.2" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                        <filter id="setup-green-glow">
+                            <feGaussianBlur stdDeviation="0.8" result="coloredBlur"/>
+                            <feMerge>
+                                <feMergeNode in="coloredBlur"/>
+                                <feMergeNode in="SourceGraphic"/>
+                            </feMerge>
+                        </filter>
+                    </defs>
+                    <circle class="setup-ripple" cx="50" cy="50" r="0"/>
+                    <path class="setup-shield glow" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z" filter="url(#setup-gold-glow)"/>
+                    <polyline class="setup-check glow" points="30,55 45,70 70,40" filter="url(#setup-green-glow)"/>
+                    <path class="setup-shield" d="M 50,2 L 95,25 L 95,60 C 95,85 50,98 50,98 C 50,98 5,85 5,60 L 5,25 Z"/>
+                    <polyline class="setup-check" points="30,55 45,70 70,40"/>
+                </svg>
+            </div>
+            <h2>Set Up 2FA</h2>
+            <p>Secure your account with two-factor authentication</p>
+        </div>
+
+        <div class="setup-steps">
+            <div class="step-card">
+                <div class="step-header">
+                    <span class="step-number">1</span>
+                    <h3>Scan QR Code</h3>
+                </div>
+                <p>Use your authenticator app (Google Authenticator, Authy, etc.) to scan this QR code:</p>
+                <div class="qr-code-container">
+                    <img src="data:image/png;base64,{{ qr_code }}" alt="2FA QR Code" class="qr-code-img">
+                </div>
+            </div>
+
+            <div class="step-card">
+                <div class="step-header">
+                    <span class="step-number">2</span>
+                    <h3>Verify Code</h3>
+                </div>
+                <p>Enter the 6-digit code from your authenticator app to complete setup:</p>
+                
+                <form method="post" action="{{ url_for('enable_2fa') }}" class="setup-form">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    
+                    <div class="form-group">
+                        <div class="input-wrapper">
+                            <i class="fas fa-mobile-alt input-icon"></i>
+                            <input type="text" name="otp_code" class="form-control otp-input" 
+                                   placeholder="Enter 6-digit code" required autocomplete="off" 
+                                   minlength="6" maxlength="6" pattern="[0-9]{6}">
+                        </div>
+                    </div>
+
+                    <div class="form-actions">
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-check-circle"></i> Verify & Enable 2FA
+                        </button>
+                        <a href="{{ url_for('settings') }}" class="btn btn-secondary">
+                            <i class="fas fa-arrow-left"></i> Back to Settings
+                        </a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        <div class="security-info">
+            <div class="info-card">
+                <i class="fas fa-info-circle info-icon"></i>
+                <div>
+                    <h6>Important Security Information</h6>
+                    <ul>
+                        <li>Save your backup recovery codes in a safe place</li>
+                        <li>Don't share your authenticator app with others</li>
+                        <li>If you lose your device, use recovery codes to regain access</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<style>
+/* Override the narrow auth-wrapper and auth-container width for 2FA setup */
+.auth-wrapper {
+    max-width: 1000px !important;
+    width: 95% !important;
+}
+
+.auth-container {
+    max-width: none !important;
+    width: 100% !important;
+    padding: 3rem !important;
+}
+
+.setup-header {
+    text-align: center;
+    margin-bottom: 2rem;
+}
+
+.setup-logo {
+    width: 60px;
+    height: 60px;
+    margin: 0 auto 1rem auto;
+    position: relative;
+}
+
+.animated-logo-setup {
+    width: 60px;
+    height: 60px;
+    position: relative;
+    z-index: 2;
+}
+
+.setup-shield {
+    fill: none;
+    stroke: var(--primary-color);
+    stroke-width: 3;
+    stroke-dasharray: 400;
+    stroke-dashoffset: 400;
+    animation: setup-draw-shield 1s ease-out 0.2s forwards;
+}
+
+.setup-ripple {
+    fill: var(--primary-color);
+    opacity: 0;
+    animation: setup-ripple-effect 0.8s ease-out 1s forwards;
+}
+
+.setup-check {
+    fill: none;
+    stroke: var(--success-color);
+    stroke-width: 4;
+    stroke-linecap: round;
+    stroke-linejoin: round;
+    stroke-dasharray: 100;
+    stroke-dashoffset: 100;
+    animation: setup-draw-check 0.5s ease-out 1.2s forwards;
+}
+
+.glow {
+    opacity: 0;
+    animation: setup-pulse-glow 1.5s ease-in-out infinite alternate 1.8s;
+}
+
+@keyframes setup-draw-shield { 
+    to { stroke-dashoffset: 0; } 
+}
+
+@keyframes setup-ripple-effect {
+    0% { r: 0; opacity: 0.3; }
+    90% { r: 20; opacity: 0.1; }
+    100% { r: 25; opacity: 0; }
+}
+
+@keyframes setup-draw-check { 
+    to { stroke-dashoffset: 0; } 
+}
+
+@keyframes setup-pulse-glow {
+    from { opacity: 0.1; }
+    to { opacity: 0.4; }
+}
+
+.setup-header h2 {
+    color: var(--dark-grey);
+    margin-bottom: 0.5rem;
+    font-weight: 600;
+}
+
+.setup-header p {
+    color: var(--medium-grey);
+    margin: 0;
+}
+
+.setup-steps {
+    display: flex;
+    flex-direction: column;
+    gap: 1.5rem;
+    margin-bottom: 2rem;
+}
+
+/* On larger screens, show steps side by side */
+@media (min-width: 768px) {
+    .setup-steps {
+        flex-direction: row;
+        gap: 2rem;
+    }
+
+    .step-card {
+        flex: 1;
+    }
+}
+
+.step-card {
+    background: var(--light-grey);
+    border: 1px solid var(--border-color);
+    border-radius: var(--border-radius);
+    padding: 1.5rem;
+    border-left: 4px solid var(--primary-color);
+}
+
+.step-header {
+    display: flex;
+    align-items: center;
+    gap: 1rem;
+    margin-bottom: 1rem;
+}
+
+.step-number {
+    background: var(--primary-color);
+    color: white;
+    width: 30px;
+    height: 30px;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 600;
+    font-size: 0.9rem;
+}
+
+.step-card h3 {
+    color: var(--dark-grey);
+    margin: 0;
+    font-weight: 600;
+}
+
+.step-card p {
+    color: var(--medium-grey);
+    margin-bottom: 1rem;
+}
+
+.qr-code-container {
+    text-align: center;
+    padding: 1rem;
+    background: white;
+    border-radius: var(--border-radius);
+    border: 2px dashed var(--border-color);
+}
+
+.qr-code-img {
+    max-width: 200px;
+    height: auto;
+    border-radius: var(--border-radius);
+}
+
+.setup-form {
+    margin-top: 1rem;
+}
+
+.form-group {
+    margin-bottom: 1.5rem;
+}
+
+.input-wrapper {
+    position: relative;
+}
+
+.input-icon {
+    position: absolute;
+    left: 1rem;
+    top: 50%;
+    transform: translateY(-50%);
+    color: var(--medium-grey);
+}
+
+.form-control {
+    width: 100%;
+    padding: 0.75rem 1rem 0.75rem 3rem;
+    border: 2px solid var(--border-color);
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    transition: var(--transition-speed);
+    background: white;
+}
+
+.form-control:focus {
+    outline: none;
+    border-color: var(--primary-color);
+    box-shadow: 0 0 0 3px rgba(0, 168, 150, 0.1);
+}
+
+.otp-input {
+    text-align: center;
+    letter-spacing: 0.5rem;
+    font-size: 1.2rem;
+    font-weight: 600;
+}
+
+.form-actions {
+    display: flex;
+    gap: 1rem;
+    justify-content: center;
+}
+
+.btn {
+    padding: 0.75rem 1.5rem;
+    border: none;
+    border-radius: var(--border-radius);
+    font-size: 1rem;
+    font-weight: 500;
+    text-decoration: none;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    transition: var(--transition-speed);
+    cursor: pointer;
+}
+
+.btn-primary {
+    background: var(--primary-color);
+    color: white;
+}
+
+.btn-primary:hover {
+    background: var(--primary-hover);
+    transform: translateY(-1px);
+}
+
+.btn-secondary {
+    background: white;
+    color: var(--medium-grey);
+    border: 2px solid var(--border-color);
+}
+
+.btn-secondary:hover {
+    background: var(--light-grey);
+    color: var(--dark-grey);
+}
+
+.security-info {
+    border-top: 1px solid var(--border-color);
+    padding-top: 1.5rem;
+}
+
+.info-card {
+    display: flex;
+    align-items: flex-start;
+    gap: 1rem;
+    padding: 1rem;
+    background: #e3f2fd;
+    border-left: 4px solid var(--info-color);
+    border-radius: var(--border-radius);
+}
+
+.info-icon {
+    color: var(--info-color);
+    font-size: 1.2rem;
+    margin-top: 0.2rem;
+}
+
+.info-card h6 {
+    margin: 0 0 0.5rem 0;
+    color: var(--dark-grey);
+    font-weight: 600;
+}
+
+.info-card ul {
+    margin: 0;
+    padding-left: 1rem;
+    color: var(--dark-grey);
+    font-size: 0.9rem;
+}
+
+.info-card li {
+    margin-bottom: 0.25rem;
+}
+</style>
+{% endblock %}

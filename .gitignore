@@ -1,0 +1,90 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+
+# Virtual Environment
+venv/
+env/
+ENV/
+.venv
+
+# Environment Variables & Secrets
+.env
+.env.local
+.env.*.local
+*.key
+*.pem
+*.crt
+config.json
+secrets.json
+.salt
+
+# Database
+*.db
+*.sqlite
+*.sqlite3
+instance/
+
+# Logs
+*.log
+logs/
+logs.txt
+server.log
+
+# IDE & Editors
+.vscode/
+.idea/
+.claude/
+*.swp
+*.swo
+*~
+.DS_Store
+
+# Reports & Documents (if sensitive)
+*.pdf
+*.docx
+examplereport.*
+Report*.pdf
+Report*.docx
+
+# Temporary files
+*.tmp
+*.bak
+*.cache
+nul
+
+# Folder for excluded files
+DO_NOT_UPLOAD_TO_GITHUB/
+
+# Test license files
+licenses/license_*.txt
+licenses/*test*.txt
+licenses/*Test*.txt
+licenses/clear_license*.py
+licenses/test_*.py
+licenses/comprehensive_license_test.py
+licenses/enhanced_license_generator.py
+licenses/generate_test_license.py
+licenses/simple_license_generator.py
+
+# OS
+Thumbs.db
+.DS_Store
