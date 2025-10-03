@@ -273,6 +273,8 @@ end;
 
 {* Initialize Setup *}
 function InitializeSetup(): Boolean;
+var
+  ResultCode: Integer;
 begin
   Result := True;
 
