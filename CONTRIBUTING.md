@@ -6,15 +6,15 @@ This document provides guidelines for contributing to the project. Please feel f
 
 ## Code of Conduct
 
-By participating in this project, you agree to abide by our [Code of Conduct](https://www.google.com/search?q=CODE_OF_CONDUCT.md "null"). Please read it to understand the standards we expect from all members of our community.
+By participating in this project, you agree to abide by our [Code of Conduct](CODE_OF_CONDUCT.md). Please read it to understand the standards we expect from all members of our community.
 
 ## How Can I Contribute?
 
 There are many ways to contribute, and not all of them involve writing code.
 
-- **Reporting Bugs:** If you find a bug, please report it! Use our [Bug Report Template](https://www.google.com/search?q=https://github.com/SubashUduwaka/cloud-security-scanner/issues/new%3Ftemplate%3Dbug_report.yml "null") to provide as much detail as possible.
-  
-- **Suggesting Enhancements:** Have an idea for a new feature or an improvement to an existing one? We'd love to hear it. Please use the [Feature Request Template](https://www.google.com/search?q=https://github.com/SubashUduwaka/cloud-security-scanner/issues/new%3Ftemplate%3Dfeature_request.yml "null").
+- **Reporting Bugs:** If you find a bug, please report it! Use our [Bug Report Template](https://github.com/SubashUduwaka/cloud-security-scanner/issues/new?template=bug_report.md) to provide as much detail as possible.
+
+- **Suggesting Enhancements:** Have an idea for a new feature or an improvement to an existing one? We'd love to hear it. Please use the [Feature Request Template](https://github.com/SubashUduwaka/cloud-security-scanner/issues/new?template=feature_request.md).
   
 - **Writing Documentation:** Good documentation is key. If you find something that's unclear or could be improved, you can submit a pull request with your changes.
   

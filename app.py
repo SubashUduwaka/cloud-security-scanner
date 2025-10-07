@@ -5142,26 +5142,39 @@ def handle_aws_credentials(profile_name: str):
             flash(f'AWS credential validation failed: {error_msg}', 'error')
             return redirect(url_for('settings'))
         
-        # Test credentials with AWS
+        # Test credentials with AWS (skip if offline)
+        credential_validated = False
         try:
             logging.info(f"Validating AWS credentials for profile '{profile_name}'")
             sts_client = boto3.client(
-                'sts', 
-                aws_access_key_id=access_key_id, 
-                aws_secret_access_key=secret_access_key
+                'sts',
+                region_name='us-east-1',
+                aws_access_key_id=access_key_id,
+                aws_secret_access_key=secret_access_key,
+                config=boto3.session.Config(
+                    connect_timeout=5,
+                    read_timeout=5,
+                    retries={'max_attempts': 1}
+                )
             )
             caller_identity = sts_client.get_caller_identity()
             logging.info(f"AWS credential validation successful for account: {caller_identity.get('Account')}")
-            
+            credential_validated = True
+
         except ClientError as e:
             error_code = e.response.get("Error", {}).get("Code")
             logging.error(f"AWS credential validation failed: {error_code}")
-            
+
             if error_code in ['InvalidClientTokenId', 'SignatureDoesNotMatch']:
                 flash('AWS credentials are invalid. Please check your Access Key and Secret Key.', 'error')
             else:
                 flash(f'AWS error occurred: {error_code}. Please check credentials and permissions.', 'error')
             return redirect(url_for('settings'))
+
+        except Exception as e:
+            # Network error or timeout - allow storing credentials anyway
+            logging.warning(f"Could not validate AWS credentials (network issue): {e}")
+            logging.info("Storing credentials without validation (offline mode)")
         
         # Store credentials (database for regular users, session for guests)
         if session.get('guest_mode'):
@@ -5176,28 +5189,34 @@ def handle_aws_credentials(profile_name: str):
             }
             guest_credentials.append(guest_cred)
             session['guest_credentials'] = guest_credentials
-            flash(f'Successfully added AWS credential profile: {profile_name} (Guest Session)', 'success')
+            if credential_validated:
+                flash(f'Successfully added AWS credential profile: {profile_name} (Guest Session)', 'success')
+            else:
+                flash(f'Added AWS credential profile: {profile_name} (Stored without validation - offline mode)', 'warning')
         else:
             # Regular database storage for authenticated users
             new_cred = CloudCredential(
-                owner=current_user, 
-                profile_name=profile_name, 
+                owner=current_user,
+                profile_name=profile_name,
                 provider='aws'
             )
             new_cred.encrypted_key_1 = encrypt_data(
-                access_key_id, 
+                access_key_id,
                 context=f"AWS Access Key for profile '{profile_name}'"
             )
             new_cred.encrypted_key_2 = encrypt_data(
-                secret_access_key, 
+                secret_access_key,
                 context=f"AWS Secret Key for profile '{profile_name}'"
             )
-            
+
             db.session.add(new_cred)
             db.session.commit()
-            
+
             log_audit("AWS Credentials Added", details=f"Profile: {profile_name}", user=current_user)
-            flash(f'Successfully added AWS credential profile: {profile_name}', 'success')
+            if credential_validated:
+                flash(f'Successfully added AWS credential profile: {profile_name}', 'success')
+            else:
+                flash(f'Added AWS credential profile: {profile_name} (Stored without validation - offline mode)', 'warning')
         
         return redirect(url_for('settings'))
         

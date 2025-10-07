@@ -19,12 +19,14 @@ wheels/
 *.egg-info/
 .installed.cfg
 *.egg
+MANIFEST
 
 # Virtual Environment
 venv/
 env/
 ENV/
 .venv
+*.venv/
 
 # Environment Variables & Secrets
 .env
@@ -48,6 +50,7 @@ instance/
 logs/
 logs.txt
 server.log
+aegis_scanner_debug.log
 
 # IDE & Editors
 .vscode/
@@ -57,6 +60,7 @@ server.log
 *.swo
 *~
 .DS_Store
+*.code-workspace
 
 # Reports & Documents (if sensitive)
 *.pdf
@@ -85,6 +89,27 @@ licenses/enhanced_license_generator.py
 licenses/generate_test_license.py
 licenses/simple_license_generator.py
 
+# Installer Development Files
+*.iss
+installer_output/
+gtk3-runtime-*.exe
+*.ico
+*.png
+!static/*.png
+!static/**/*.png
+!docs/*.png
+!docs/**/*.png
+LICENSE_GENERATOR_GUI.bat
+license_generator_gui.py
+
+# Release Notes (moved to DO_NOT_UPLOAD_TO_GITHUB)
+RELEASE_NOTES_*.md
+INSTALLER_BUILD_GUIDE.md
+
 # OS
 Thumbs.db
 .DS_Store
+
+# Git
+.git/
+.gitattributes

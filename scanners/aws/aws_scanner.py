@@ -698,15 +698,20 @@ def get_all_scan_functions(credentials, regions=None):
         return [("Credential Validation", lambda: [{"service": "AWS Scanner", "resource": "Credentials", "status": "ERROR", "issue": "AWS credentials appear to be placeholder or test values.", "remediation": "Please replace the placeholder credentials with real AWS access keys from your AWS account."}])]
     
     try:
-        session = boto3.Session(aws_access_key_id=aws_access_key_id, aws_secret_access_key=aws_secret_access_key)
-        
-        # Test the credentials by making a simple call
-        sts_client = session.client('sts')
+        session = boto3.Session(
+            aws_access_key_id=aws_access_key_id,
+            aws_secret_access_key=aws_secret_access_key,
+            region_name='us-east-1'
+        )
+
+        # Test the credentials by making a simple call with explicit region
+        sts_client = session.client('sts', region_name='us-east-1')
         identity = sts_client.get_caller_identity()
         logging.info(f"AWS credentials validated successfully for account: {identity.get('Account', 'unknown')}")
-        
-        iam_client = session.client('iam')
-        s3_client = session.client('s3')
+
+        # IAM is global but needs a region endpoint
+        iam_client = session.client('iam', region_name='us-east-1')
+        s3_client = session.client('s3', region_name='us-east-1')
         
     except ClientError as e:
         error_code = e.response.get('Error', {}).get('Code')
@@ -1483,7 +1488,7 @@ def scan_budgets(budgets_client):
     try:
         # Get account ID dynamically
         import boto3
-        sts = boto3.client('sts')
+        sts = boto3.client('sts', region_name='us-east-1')
         account_id = sts.get_caller_identity()['Account']
         
         # List all budgets

@@ -251,18 +251,18 @@ class CredentialMigrator:
 def setup_secure_crypto_manager() -> SecureCryptoManager:
     """
     Setup secure crypto manager with proper configuration.
-    
+
     Returns:
         Configured SecureCryptoManager instance
     """
-    
+
     try:
         from secrets_manager import secrets_manager
         master_password = secrets_manager.get_master_password()
     except ImportError:
-        
+
         master_password = os.getenv('AEGIS_MASTER_PASSWORD')
-    
+
     if not master_password:
         logging.warning("No master password found in environment. Generating new one.")
         logging.warning("Set AEGIS_MASTER_PASSWORD environment variable for production use.")
@@ -272,5 +272,15 @@ def setup_secure_crypto_manager() -> SecureCryptoManager:
                 logging.warning(f"  {key} = {value[:20]}..." if len(value) > 20 else f"  {key} = {value}")
     else:
         logging.info(f"Master password found in environment (length: {len(master_password)})")
-    
-    return SecureCryptoManager(master_password)
+
+    # Use user data directory for salt file
+    import sys
+    if sys.platform == "win32":
+        user_data_dir = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'AegisScanner')
+    else:
+        user_data_dir = os.path.join(os.path.expanduser('~'), '.aegisscanner')
+
+    os.makedirs(user_data_dir, exist_ok=True)
+    salt_path = os.path.join(user_data_dir, '.salt')
+
+    return SecureCryptoManager(master_password, salt_path=salt_path)

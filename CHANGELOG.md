@@ -5,6 +5,51 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [v0.9.0] - 2025-10-07
+
+### Added
+
+- **Windows Installer**: First official Windows installer (`AegisCloudScanner_Professional_Setup_v0.8.exe`) with automatic dependency installation
+- **GTK3 Runtime Integration**: Automatic GTK3 runtime installation for PDF generation support (WeasyPrint)
+- **Desktop Shortcut**: One-click application launch from desktop with custom logo
+- **License Generator GUI**: Professional graphical interface for generating Basic/Pro license keys
+- **Offline Mode Support**: Credentials can be stored without AWS validation when offline
+- **Installer Components**: Professional installer with selectable components (Core, Documentation, Docker)
+- **Automatic Python Dependencies**: Installer automatically runs `pip install` for all requirements
+- **Administrator Privileges**: Installer enforces admin rights for proper system integration
+- **Custom Logo Integration**: Logo.ico integrated into all shortcuts and uninstaller
+
+### Changed
+
+- **Crypto Manager**: Salt file now stored in user AppData directory instead of Program Files
+- **AWS Connection**: All boto3 clients now use explicit `us-east-1` region to avoid global endpoint errors
+- **Credential Storage**: Enhanced error handling for network failures during credential validation
+- **Session Timeout**: Added 5-second timeout for AWS credential validation
+- **User Data Directory**: Consistent use of `%LOCALAPPDATA%\AegisScanner` for all user data
+
+### Fixed
+
+- **PermissionError**: Fixed salt file write permission issues in Program Files directory
+- **AWS Endpoint Connection**: Resolved `sts.global.amazonaws.com` connection errors by specifying regional endpoints
+- **Credential Validation**: Fixed network error handling to allow credential storage in offline mode
+- **Inno Setup Compatibility**: Removed unsupported directives for Inno Setup 5.x compatibility
+- **Database Path**: Fixed SQLite database path issues in installed applications
+- **GTK3 PDF Generation**: PDF reports now work correctly with bundled GTK3 runtime
+
+### Security
+
+- **Non-Writable Installation**: Application files installed in protected Program Files directory
+- **User Data Separation**: User-specific data properly isolated in AppData directory
+- **Encrypted Credentials**: All credentials encrypted and stored securely in user profile
+- **Administrator Installation**: Requires admin privileges preventing unauthorized installations
+
+### Documentation
+
+- **INSTALLER_BUILD_GUIDE.md**: Complete guide for building and testing Windows installers
+- **Installation Instructions**: Detailed Python/pip setup and environment variable configuration
+- **Cleanup Guide**: Instructions for removing old application versions
+- **Docker Deployment**: Updated documentation for upcoming Docker image release
+
 ## [v1.0.0] - 2025-10-02
 
 ### Added
