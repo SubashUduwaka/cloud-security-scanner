@@ -284,34 +284,6 @@ If you have previous versions installed, follow these steps:
 
 ---
 
-## 🔧 Configuration
-
-### Cloud Provider Credentials
-
-#### AWS
-```
-Access Key ID: AKIAIOSFODNN7EXAMPLE
-Secret Access Key: wJalrXUtnFEMI/K7MDENG/bPxRfiCYEXAMPLEKEY
-```
-
-**Required IAM Permissions**: ReadOnlyAccess or SecurityAudit policy
-
-#### GCP
-- Upload Service Account JSON key file
-- **Required Roles**: Viewer or Security Reviewer
-
-#### Azure
-```
-Client ID: 12345678-1234-1234-1234-123456789012
-Client Secret: your-secret-here
-Tenant ID: 87654321-4321-4321-4321-210987654321
-Subscription ID: abcdefgh-ijkl-mnop-qrst-uvwxyz123456
-```
-
-**Required Role**: Reader or Security Reader
-
----
-
 ## 📚 Documentation
 
 - [Installation Guide](docs/INSTALLATION.md)
@@ -332,13 +304,12 @@ Subscription ID: abcdefgh-ijkl-mnop-qrst-uvwxyz123456
 - [x] GTK3 Integration
 - [x] License System
 - [x] AI Chatbot
-- [ ] Docker Image Release
-- [ ] Scheduled Scanning
-- [ ] Webhook Integrations
-- [ ] Multi-User Organizations
-- [ ] Custom Policy Engine
-- [ ] API Access
-- [ ] CLI Tool
+- [x] Docker Image Release
+- [x] Scheduled Scanning
+- [x] Webhook Integrations
+- [x] Multi-User Organizations
+- [x] Custom Policy Engine
+- [x] API Access
 
 ---
 
