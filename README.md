@@ -17,7 +17,7 @@
 
 [Features](#-features) • [Installation](#-installation) • [Quick Start](#-quick-start) • [Documentation](#-documentation) • [Contributing](#-contributing)
 
-<img src="https://i.imgur.com/A5CGI6x.png" alt="Aegis Dashboard" width="800"/>
+<img src="https://i.imgur.com/As7fEvN.png" alt="Aegis Dashboard" width="800"/>
 
 </div>
 
@@ -342,16 +342,169 @@ Subscription ID: abcdefgh-ijkl-mnop-qrst-uvwxyz123456
 
 ---
 
+### For Security Teams
+- 🔍 **Continuous Monitoring**: Automated security assessments
+- 📊 **Compliance Reporting**: Generate audit-ready reports
+- 🚨 **Incident Response**: Quickly identify misconfigurations
+- 📈 **Risk Management**: Track security posture over time
+
+### For DevOps Engineers
+- ⚡ **Pre-Deployment Checks**: Scan before going to production
+- 🔄 **CI/CD Integration**: Automate security in pipelines
+- 🛠️ **Infrastructure Validation**: Verify IaC configurations
+- 📝 **Documentation**: Generate security documentation
+
+### For Compliance Officers
+- ✅ **Framework Mapping**: Map findings to compliance requirements
+- 📄 **Audit Reports**: Professional PDF reports for auditors
+- 📊 **Dashboard Views**: Real-time compliance status
+- 🔒 **Evidence Collection**: Document security controls
+
+---
+
+## 🎬 Screenshots & Demo
+
+<div align="center">
+
+### 🏠 Main Dashboard - Security Overview
+<img src="https://i.imgur.com/2YQgBiX.png" alt="Main Dashboard" width="800"/>
+<sub>Real-time security posture monitoring with interactive charts and metrics</sub>
+
+---
+
+### 📊 Compliance Center - Framework Tracking
+<img src="https://i.imgur.com/b0ufWGe.png" alt="Compliance Center" width="800"/>
+<sub>Track compliance across SOC 2, ISO 27001, GDPR, and HIPAA frameworks</sub>
+
+---
+
+### 🔍 Security Scan Results
+<img src="https://i.imgur.com/DXJduKK.png" alt="Scan Results" width="800"/>
+<sub>Detailed findings with severity classification and remediation guidance</sub>
+
+---
+
+### 🤖 AI-Powered Chatbot Assistant
+<img src="https://i.imgur.com/VlGBr2g.png" alt="AI Chatbot" width="250"/>
+<sub>Get instant security guidance with Gemini AI integration</sub>
+
+---
+
+### 🔑 License Management
+<img src="https://i.imgur.com/akCMA8W.png" alt="License Management" width="800"/>
+<sub>Easy license activation and upgrade to Pro features</sub>
+
+---
+
+### 📄 Professional PDF Reports
+<img src="https://i.imgur.com/RJMEfrp.png" alt="PDF Reports" width="800"/>
+<sub>Generate audit-ready reports with executive summaries and detailed findings</sub>
+
+</div>
+
+---
+
+## 🛠️ Tech Stack
+
+<div align="center">
+
+| Category | Technologies |
+|----------|-------------|
+| **Backend** | Flask 3.0, SQLAlchemy, Gunicorn |
+| **Cloud SDKs** | Boto3 (AWS), Google Cloud SDK, Azure SDK |
+| **AI** | Google Generative AI (Gemini) |
+| **Security** | Flask-Login, Flask-Bcrypt, PyOTP, Fernet |
+| **Frontend** | HTML5, CSS3, JavaScript, Chart.js |
+| **Database** | SQLite (PostgreSQL ready) |
+| **DevOps** | Docker, Docker Compose |
+
+</div>
+
+---
+
+## 📦 What's Included
+
+```
+cloud-security-scanner/
+├── 📄 app.py                    # Main application
+├── 📁 scanners/                 # Cloud scanners (AWS, GCP, Azure)
+├── 📁 licenses/                 # License management
+├── 📁 templates/                # HTML templates
+├── 📁 static/                   # CSS, JavaScript
+├── 📁 tools/                    # Utilities (crypto, validators, logging)
+├── 📁 docs/                     # User documentation
+├── 📁 .github/DEVELOPER_DOCS/   # Developer documentation
+├── 🐳 Dockerfile                # Docker configuration
+├── 🐳 docker-compose.yml        # Docker Compose setup
+├── 📋 requirements.txt          # Python dependencies
+└── 📖 README.md                 # This file
+```
+
+---
+
+## 🔑 License Management
+
+Aegis uses a **two-tier licensing system**:
+
+### 🆓 Basic (Free)
+- ✅ 5 scans per month
+- ✅ Single cloud provider
+- ✅ Basic reporting
+- ✅ Community support
+
+### 💎 Pro (License Key Required)
+- ✅ Unlimited scans
+- ✅ All cloud providers
+- ✅ AI chatbot
+- ✅ Advanced reporting
+- ✅ Priority support
+
+**🎁 Request a FREE license key**: Email [aegis.aws.scanner@gmail.com](mailto:aegis.aws.scanner@gmail.com)
+
+> License keys are provided **free of charge** for educational and personal use. Just send us an email! 📧
+
+---
+
 ## 🤝 Contributing
 
 We welcome contributions! Please see our [Contributing Guide](CONTRIBUTING.md) for details.
 
-### Quick Contribution Steps:
-1. Fork the repository
-2. Create feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit changes (`git commit -m 'Add AmazingFeature'`)
-4. Push to branch (`git push origin feature/AmazingFeature`)
-5. Open Pull Request
+1. 🍴 Fork the repository
+2. 🌿 Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. 💾 Commit your changes (`git commit -m 'Add AmazingFeature'`)
+4. 🚀 Push to the branch (`git push origin feature/AmazingFeature`)
+5. 🎯 Open a Pull Request
+
+See [CONTRIBUTING.md](CONTRIBUTING.md) for detailed guidelines.
+
+---
+
+## 🐛 Issues & Support
+
+### Found a bug? Have a feature request?
+- 🐛 [Report an issue](https://github.com/SubashUduwaka/cloud-security-scanner/issues/new)
+- 💡 [Request a feature](https://github.com/SubashUduwaka/cloud-security-scanner/issues/new)
+
+### Need help?
+- 📖 Check the [User Manual](docs/USER_MANUAL.md)
+- 💬 Open a [Discussion](https://github.com/SubashUduwaka/cloud-security-scanner/discussions)
+- 📧 Email: [aegis.aws.scanner@gmail.com](mailto:aegis.aws.scanner@gmail.com)
+
+---
+
+## 👨‍💻 Authors
+
+<div align="center">
+
+**Aegis Cloud Team**
+
+[![Email](https://img.shields.io/badge/Email-aegis.aws.scanner%40gmail.com-red?style=for-the-badge&logo=gmail)](mailto:aegis.aws.scanner@gmail.com)
+[![GitHub](https://img.shields.io/badge/GitHub-SubashUduwaka-black?style=for-the-badge&logo=github)](https://github.com/SubashUduwaka)
+[![Phone](https://img.shields.io/badge/Phone-%2B94%2077%20962%206608-green?style=for-the-badge&logo=whatsapp)](tel:+94779626608)
+
+*Built with ❤️ for the security community*
+
+</div>
 
 ---
 
