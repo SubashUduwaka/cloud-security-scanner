@@ -102,7 +102,20 @@
                     </div>
                     <div class="info-row">
                         <span class="info-label">License Key:</span>
-                        <span class="info-value"><code>{{ current_user.license_key }}</code></span>
+                        <span class="info-value" style="display: flex; align-items: center; gap: 10px;">
+                            <code id="partialLicenseKeySettings" style="flex: 1;">
+                                {% if current_user.license_key %}
+                                    {{ current_user.license_key[:8] }}-****-****-{{ current_user.license_key[-4:] if current_user.license_key|length > 12 else 'XXXX' }}
+                                {% else %}
+                                    No license key
+                                {% endif %}
+                            </code>
+                            {% if current_user.license_key %}
+                            <button onclick="viewFullLicenseSettings()" class="button" style="padding: 6px 12px; font-size: 0.85rem; margin: 0;">
+                                <i class="fas fa-eye"></i> View
+                            </button>
+                            {% endif %}
+                        </span>
                     </div>
                     <div class="info-row">
                         <span class="info-label">Activated On:</span>
@@ -1145,6 +1158,128 @@ document.addEventListener('DOMContentLoaded', function() {
         });
     }
 });
+
+// License Key Viewing Functions for Settings Page
+function viewFullLicenseSettings() {
+    const modal = `
+        <div class="modal" id="licenseModalSettings" style="display: block; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4);">
+            <div class="modal-content" style="background-color: #fefefe; margin: 10% auto; padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                <span class="close" onclick="closeLicenseModalSettings()" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+                <h2 style="margin-top: 0; color: #333;"><i class="fas fa-key"></i> View Full License Key</h2>
+                <p style="color: #666; margin-bottom: 20px;">Enter your password to view the full license key:</p>
+                <input type="password" id="licensePasswordSettings" class="form-control" placeholder="Password" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 20px; font-size: 14px;">
+                <div class="modal-buttons" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="button" onclick="revealLicenseSettings()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #00A896, #007F73); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                        <i class="fas fa-eye"></i> View License
+                    </button>
+                    <button class="button" onclick="closeLicenseModalSettings()" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+                <div id="fullLicenseDisplaySettings" style="display:none; margin-top: 20px;">
+                    <p style="font-weight: 600; color: #333; margin-bottom: 10px;">Full License Key:</p>
+                    <p id="fullLicenseKeySettings" style="font-family: 'Courier New', monospace; background: #f8f9fa; padding: 15px; border-radius: 6px; word-break: break-all; font-size: 14px; border: 1px solid #dee2e6;"></p>
+                    <p style="color: #dc3545; font-weight: 500; margin-top: 15px;">
+                        <i class="fas fa-clock"></i> This key will disappear in <span id="countdownSettings" style="font-weight: 700;">240</span> seconds
+                    </p>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function closeLicenseModalSettings() {
+    const modal = document.getElementById('licenseModalSettings');
+    if (modal) {
+        modal.remove();
+    }
+    if (window.licenseTimeoutSettings) {
+        clearTimeout(window.licenseTimeoutSettings);
+        clearInterval(window.licenseCountdownSettings);
+    }
+}
+
+async function revealLicenseSettings() {
+    const password = document.getElementById('licensePasswordSettings').value;
+
+    if (!password) {
+        showNotification('Please enter your password', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/view-license', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ password: password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Display the license key
+            document.getElementById('fullLicenseKeySettings').textContent = data.license_key;
+            document.getElementById('fullLicenseDisplaySettings').style.display = 'block';
+
+            // Hide password input and buttons
+            const modal = document.getElementById('licenseModalSettings');
+            const buttonsDiv = modal.querySelector('.modal-buttons');
+            const passwordInput = document.getElementById('licensePasswordSettings');
+
+            if (buttonsDiv) buttonsDiv.style.display = 'none';
+            if (passwordInput) passwordInput.style.display = 'none';
+
+            // Start 4 minute (240 second) countdown
+            let timeLeft = 240;
+            const countdownEl = document.getElementById('countdownSettings');
+
+            window.licenseCountdownSettings = setInterval(() => {
+                timeLeft--;
+                if (countdownEl) countdownEl.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(window.licenseCountdownSettings);
+                }
+            }, 1000);
+
+            // Auto-hide after 4 minutes
+            window.licenseTimeoutSettings = setTimeout(() => {
+                closeLicenseModalSettings();
+                showNotification('License key view expired', 'info');
+            }, 240000);
+
+            showNotification('License key revealed successfully', 'success');
+        } else {
+            console.error('License view error:', data.error);
+            showNotification(data.error || 'Invalid password', 'error');
+        }
+    } catch (error) {
+        console.error('License view exception:', error);
+        showNotification('Error: ' + error.message, 'error');
+    }
+}
+
+function getCsrfToken() {
+    // Try to get CSRF token from meta tag or cookie
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    if (metaToken) {
+        return metaToken.getAttribute('content');
+    }
+
+    // Fallback to cookie
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrf_token') {
+            return decodeURIComponent(value);
+        }
+    }
+
+    return '';
+}
 </script>
 
 {% endblock %}

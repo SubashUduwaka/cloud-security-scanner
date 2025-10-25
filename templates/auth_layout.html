@@ -155,22 +155,25 @@
         
         .auth-wrapper {
             width: 100%;
-            max-width: 400px;
+            max-width: 500px;
             margin: 0 auto;
+            padding: 0 1rem;
             position: relative;
             z-index: 2;
         }
-        
+
         .auth-container {
             background: rgba(255, 255, 255, 0.95);
             backdrop-filter: blur(15px);
-            padding: 2rem;
+            padding: 2.5rem 2rem;
             border-radius: 20px;
             box-shadow: 0 25px 50px rgba(0, 0, 0, 0.15);
             border: 1px solid rgba(255, 255, 255, 0.3);
             animation: slideInUp 0.8s ease;
             position: relative;
             overflow: hidden;
+            width: 100%;
+            box-sizing: border-box;
         }
         
         .auth-container::before {

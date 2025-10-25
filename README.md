@@ -32,8 +32,35 @@ Aegis Cloud Security Scanner is a **free, open-source** Cloud Security Posture M
 - ✅ **Get AI-powered remediation guidance** with integrated Gemini chatbot
 - ✅ **Generate professional reports** for stakeholders
 - ✅ **Monitor security posture** over time with trend analysis
+- ⚡ **Lightning-fast dashboard** - Loads in under 1 second (90% faster than v0.9.0)
 
 > **Built by a security enthusiast for the security community** 🔐
+
+---
+
+## 🆕 What's New in v0.9.2
+
+**Latest Release: October 23, 2025** - Critical bug fixes and security enhancements!
+
+### 🔧 Critical Fixes
+- ✅ **License Key Viewing Fixed** - Resolved password verification bug (bcrypt library mismatch)
+- ✅ **Database Restore Working** - Fixed CSRF token handling for backup restore functionality
+- ✅ **UI Improvements** - Removed annoying real-time monitoring notifications on every page load
+- ✅ **Login Form Alignment** - Fixed authentication page layout issues
+
+### 🔐 Security Enhancements
+- Enhanced password verification with comprehensive audit logging
+- Improved error handling without exposing sensitive information
+- Added validation for password hash integrity
+- Real-time 2FA adoption statistics in security configuration
+
+### 📊 Admin Panel Improvements
+- Accurate 2FA statistics showing actual user adoption rates
+- Better license key management with secure password-protected viewing
+- Enhanced JavaScript modal handling with proper error recovery
+- Improved debugging with structured logging
+
+**See full details in [CHANGELOG.md](CHANGELOG.md)**
 
 ---
 
@@ -67,8 +94,9 @@ Aegis Cloud Security Scanner is a **free, open-source** Cloud Security Posture M
 ### 📊 Compliance & Reporting
 - **4 Major Frameworks**: SOC 2, ISO 27001, GDPR, HIPAA
 - **PDF Report Generation**: Professional, branded reports
+- **Timezone Support**: Reports in your local timezone (including Sri Lanka UTC+5:30)
 - **Historical Tracking**: Trend analysis over time
-- **Export Options**: Multiple format support
+- **Export Options**: PDF and CSV formats
 - **Compliance Dashboard**: Real-time posture tracking
 
 </td>
@@ -77,6 +105,7 @@ Aegis Cloud Security Scanner is a **free, open-source** Cloud Security Posture M
 ### 🔐 Enterprise Security
 - **Two-Factor Authentication**: Mandatory 2FA
 - **Role-Based Access**: Admin & User roles
+- **Real-Time Alerts**: Enterprise alert aggregation API
 - **Credential Encryption**: Fernet encryption at rest
 - **Audit Logging**: Complete activity trail
 - **Session Management**: Secure timeout handling
@@ -91,7 +120,7 @@ Aegis Cloud Security Scanner is a **free, open-source** Cloud Security Posture M
 
 ### Option 1: Windows Installer (Recommended for Windows Users)
 
-**NEW in v0.9.0**: First official Windows installer with automatic setup!
+**Latest: v0.9.2** - Windows installer with bug fixes and enhanced security!
 
 1. **Download the Installer**
    - Go to [Releases](https://github.com/SubashUduwaka/cloud-security-scanner/releases/latest)
@@ -197,13 +226,32 @@ pip3 --version
    ```
 
 4. **Run the Application**
+
+   **Production Mode (Recommended):**
    ```bash
    # Windows
    START_AEGIS.bat
 
    # macOS/Linux
-   python app.py
+   ./start_aegis.sh
+   # or
+   python3 run_production.py
    ```
+
+   **Development Mode (for developers):**
+   ```bash
+   # Windows
+   START_AEGIS_DEV.bat
+
+   # macOS/Linux
+   ./start_aegis.sh dev
+   # or
+   python3 app.py
+   ```
+
+   **Differences:**
+   - **Production**: Uses Waitress WSGI server (multi-threaded, production-ready)
+   - **Development**: Uses Flask dev server (auto-reload, debug mode)
 
 5. **Access the Application**
    - Open browser: `http://localhost:5000`
@@ -212,13 +260,26 @@ pip3 --version
 
 ---
 
-### Option 3: Docker (Coming Soon)
+### Option 3: Docker Deployment
+
+**Available Now**: Run Aegis in a containerized environment!
 
 ```bash
-# Docker image will be available soon
-docker pull aegisscanner/aegis-cloud-scanner:latest
-docker run -p 5000:5000 aegisscanner/aegis-cloud-scanner:latest
+# Clone the repository
+git clone https://github.com/SubashUduwaka/cloud-security-scanner.git
+cd cloud-security-scanner
+
+# Using Docker Compose (Recommended)
+docker-compose up -d
+
+# Or build and run manually
+docker build -t aegis-scanner .
+docker run -p 5000:5000 -v aegis-data:/app/instance aegis-scanner
 ```
+
+**Access**: Navigate to `http://localhost:5000`
+
+**Download Pre-built Image**: Available in [Releases](https://github.com/SubashUduwaka/cloud-security-scanner/releases) as `.tar` file
 
 ---
 
@@ -381,12 +442,12 @@ If you have previous versions installed, follow these steps:
 
 | Category | Technologies |
 |----------|-------------|
-| **Backend** | Flask 3.0, SQLAlchemy, Gunicorn |
+| **Backend** | Flask 3.0, SQLAlchemy, Waitress (Windows), Gunicorn (Docker) |
 | **Cloud SDKs** | Boto3 (AWS), Google Cloud SDK, Azure SDK |
 | **AI** | Google Generative AI (Gemini) |
 | **Security** | Flask-Login, Flask-Bcrypt, PyOTP, Fernet |
 | **Frontend** | HTML5, CSS3, JavaScript, Chart.js |
-| **Database** | SQLite (PostgreSQL ready) |
+| **Database** | SQLite (default), PostgreSQL (production) |
 | **DevOps** | Docker, Docker Compose |
 
 </div>
@@ -397,18 +458,35 @@ If you have previous versions installed, follow these steps:
 
 ```
 cloud-security-scanner/
-├── 📄 app.py                    # Main application
+├── 📄 app.py                    # Main Flask application (dev mode)
+├── 📄 run_production.py         # Production server launcher (Waitress)
+├── 📄 config.py                 # Configuration settings
+├── 📄 wsgi.py                   # WSGI entry point
+├── 📄 license_manager.py        # License validation system
+├── 🚀 START_AEGIS.bat           # Windows launcher (Production)
+├── 🚀 START_AEGIS_DEV.bat       # Windows launcher (Development)
+├── 🚀 start_aegis.sh            # Linux/macOS launcher (Production/Dev)
 ├── 📁 scanners/                 # Cloud scanners (AWS, GCP, Azure)
 ├── 📁 licenses/                 # License management
-├── 📁 templates/                # HTML templates
-├── 📁 static/                   # CSS, JavaScript
+├── 📁 templates/                # HTML templates (35+ pages)
+├── 📁 static/                   # CSS, JavaScript, images
 ├── 📁 tools/                    # Utilities (crypto, validators, logging)
 ├── 📁 docs/                     # User documentation
-├── 📁 .github/DEVELOPER_DOCS/   # Developer documentation
+├── 📁 .github/                  # GitHub workflows & developer docs
 ├── 🐳 Dockerfile                # Docker configuration
-├── 🐳 docker-compose.yml        # Docker Compose setup
+├── 🐳 docker-compose.yml        # Docker Compose setup (uses Gunicorn)
 ├── 📋 requirements.txt          # Python dependencies
-└── 📖 README.md                 # This file
+├── 📖 README.md                 # This file
+├── 📖 CHANGELOG.md              # Version history
+├── 📖 CONTRIBUTING.md           # Contribution guidelines
+├── 📖 CODE_OF_CONDUCT.md        # Community standards
+├── 📖 SECURITY.md               # Security policy
+└── 📁 project_files/            # Development files (not needed for running)
+    ├── archives/                # Release builds (.exe, .tar)
+    ├── documents/               # Documentation (markdown, docx, pdf)
+    ├── installers/              # Installer scripts (.iss)
+    ├── scripts/                 # Development scripts
+    └── backups/                 # Code backups
 ```
 
 ---

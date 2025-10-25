@@ -1,13 +1,22 @@
 window.addEventListener('error', function(e) {
     if (e.message.includes('tsParticles is not defined')) {
         console.warn('tsParticles library not loaded - particles effect disabled');
-        return true; 
+        return true;
     }
     if (e.message.includes('zxcvbn is not defined')) {
         console.warn('zxcvbn library not loaded - password strength meter disabled');
         return true;
     }
+    if (e.message.includes('Chart is not defined')) {
+        console.warn('Chart.js library not loaded - charts disabled');
+        return true;
+    }
 });
+
+// Helper function to check if Chart.js is available
+function isChartAvailable() {
+    return typeof Chart !== 'undefined';
+}
 
 // ============= HEADER DATE/TIME FUNCTIONALITY =============
 function updateDateTime() {
@@ -41,7 +50,59 @@ function updateDateTime() {
 document.addEventListener('DOMContentLoaded', function() {
     updateDateTime();
     setInterval(updateDateTime, 1000);
+
+    // Load latest scan results on page load
+    loadLatestScanResults();
 });
+
+// Function to load latest scan results from database
+async function loadLatestScanResults() {
+    try {
+        const response = await fetch('/api/v1/latest_scan');
+
+        // Handle 404 - endpoint not available yet
+        if (response.status === 404) {
+            console.log('Latest scan endpoint not available - server may need restart');
+            return;
+        }
+
+        if (!response.ok) {
+            console.log(`Latest scan request failed with status: ${response.status}`);
+            return;
+        }
+
+        const data = await response.json();
+
+        if (data.has_results && data.results && data.results.length > 0) {
+            console.log(`✅ Loaded ${data.count} results from latest scan (${data.timestamp})`);
+
+            // Store results in global state
+            window.currentResults = data.results;
+            if (!window.appState) {
+                window.appState = {};
+            }
+            window.appState.currentScanResults = data.results;
+            window.appState.latestScanTimestamp = data.timestamp;
+
+            // Trigger custom event that other parts of the app can listen to
+            const event = new CustomEvent('scanResultsLoaded', {
+                detail: {
+                    results: data.results,
+                    count: data.count,
+                    timestamp: data.timestamp
+                }
+            });
+            document.dispatchEvent(event);
+
+            console.log('✅ Scan results loaded and displayed');
+        } else {
+            console.log('No previous scan results found in database');
+        }
+    } catch (error) {
+        console.log('Could not load latest scan results:', error.message);
+        // Silently fail - this is expected on first load or if no scans exist
+    }
+}
 
 // ============= UNIFIED PROGRESS SYSTEM =============
 class UnifiedProgressManager {
@@ -157,16 +218,17 @@ const renderFindingsByServiceChart = async () => {
             window.chartInstances.findingsByService.destroy();
         }
 
-        window.chartInstances.findingsByService = new Chart(findingsByServiceCanvas, {
-            type: 'doughnut',
-            data: {
-                labels: data.labels || [],
-                datasets: [{
-                    data: data.data || [],
-                    backgroundColor: data.colors || ['#D64550', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'],
-                    borderWidth: 4
-                }]
-            },
+        if (typeof Chart !== 'undefined') {
+            window.chartInstances.findingsByService = new Chart(findingsByServiceCanvas, {
+                type: 'doughnut',
+                data: {
+                    labels: data.labels || [],
+                    datasets: [{
+                        data: data.data || [],
+                        backgroundColor: data.colors || ['#D64550', '#FF6B6B', '#4ECDC4', '#45B7D1', '#96CEB4'],
+                        borderWidth: 4
+                    }]
+                },
             options: {
                 responsive: true,
                 maintainAspectRatio: false,
@@ -183,7 +245,10 @@ const renderFindingsByServiceChart = async () => {
             }
         });
 
-        document.dispatchEvent(new Event('themeChanged'));
+            document.dispatchEvent(new Event('themeChanged'));
+        } else {
+            console.warn('Chart.js not loaded - skipping service chart');
+        }
     } catch (error) {
         console.error('Failed to load findings by service chart:', error);
     }
@@ -272,18 +337,30 @@ function getCsrfToken() {
 function showNotification(message, type = 'info') {
     if (typeof Toastify !== 'undefined') {
         const colors = {
-            success: "linear-gradient(to right, #2ECC71, #27ae60)",
-            error: "linear-gradient(to right, #D0021B, #e74c3c)",
-            warning: "linear-gradient(to right, #F5A623, #e67e22)",
-            info: "linear-gradient(to right, #4A90E2, #357ABD)"
+            success: "linear-gradient(135deg, #4CAF50, #45A049)",
+            error: "linear-gradient(135deg, #D64550, #B83B46)",
+            warning: "linear-gradient(135deg, #F5A623, #e67e22)",
+            info: "linear-gradient(135deg, #00A896, #007F73)"
         };
 
         Toastify({
             text: message,
-            duration: 3000,
-            gravity: "bottom",
+            duration: 5000,
+            gravity: "top",
             position: "right",
-            style: { background: colors[type] || colors.info }
+            style: {
+                background: colors[type] || colors.info,
+                color: "white",
+                borderRadius: "16px",
+                padding: "16px 24px",
+                fontSize: "14px",
+                fontWeight: "500",
+                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.15)",
+                backdropFilter: "blur(10px)",
+                border: "1px solid rgba(255, 255, 255, 0.2)"
+            },
+            close: true,
+            stopOnFocus: true
         }).showToast();
     } else {
         alert(`${type.toUpperCase()}: ${message}`);
@@ -1172,8 +1249,12 @@ document.addEventListener('DOMContentLoaded', () => {
                 const response = await fetch('/api/v1/history/trends');
                 const trendData = await response.json();
                 if (window.chartInstances.trends) window.chartInstances.trends.destroy();
-                window.chartInstances.trends = new Chart(historicalTrendCanvas, { type: 'line', data: { labels: trendData.labels, datasets: [{ label: 'Critical Findings', data: trendData.data, fill: true, borderColor: '#00A896', backgroundColor: 'rgba(0, 168, 150, 0.1)', tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Historical Trend (Last 30 Days)', padding: { bottom: 10 }, font: { size: 18, weight: '600' }}}} });
-                document.dispatchEvent(new Event('themeChanged'));
+                if (typeof Chart !== 'undefined') {
+                    window.chartInstances.trends = new Chart(historicalTrendCanvas, { type: 'line', data: { labels: trendData.labels, datasets: [{ label: 'Critical Findings', data: trendData.data, fill: true, borderColor: '#00A896', backgroundColor: 'rgba(0, 168, 150, 0.1)', tension: 0.1 }] }, options: { responsive: true, maintainAspectRatio: false, plugins: { title: { display: true, text: 'Historical Trend (Last 30 Days)', padding: { bottom: 10 }, font: { size: 18, weight: '600' }}}} });
+                    document.dispatchEvent(new Event('themeChanged'));
+                } else {
+                    console.warn('Chart.js not loaded - skipping trend chart');
+                }
             } catch (error) { console.error('Failed to load trend data:', error); }
         };
 
@@ -1407,6 +1488,16 @@ document.addEventListener('DOMContentLoaded', () => {
                 loadDashboardStats();
             }
         };
+
+        // Listen for scan results loaded from database (on page refresh/navigation)
+        document.addEventListener('scanResultsLoaded', function(event) {
+            console.log('Scan results loaded event received');
+            if (event.detail && event.detail.results) {
+                // Process loaded results using the same logic as new scans
+                handleFinalResults({ results: event.detail.results, stats: null });
+                showNotification(`Loaded ${event.detail.count} findings from your latest scan`, 'success');
+            }
+        });
 
         if (scanButton) {
             scanButton.addEventListener('click', async () => {
@@ -5614,13 +5705,14 @@ function updateAutomationRulesDisplay(rules) {
             <div class="rule-info">
                 <div class="rule-name">${rule.name}</div>
                 <div class="rule-description">${rule.description || `${rule.rule_type} rule`}</div>
-                <div class="rule-meta">
-                    <span class="rule-type">${rule.rule_type}</span>
-                    ${rule.execution_count ? `<span class="execution-count">${rule.execution_count} executions</span>` : ''}
-                </div>
             </div>
-            <div class="rule-toggle ${rule.is_active ? 'active' : ''}" onclick="toggleRule(${rule.id})">
-                <span class="toggle-slider"></span>
+            <div class="rule-actions">
+                <button class="btn-icon" onclick="testAutomationRule(${rule.id})" title="Test">
+                    <i class="fas fa-vial"></i>
+                </button>
+                <div class="rule-toggle ${rule.is_active ? 'active' : ''}" onclick="toggleRule(${rule.id})">
+                    <span class="toggle-slider"></span>
+                </div>
             </div>
         </div>
     `).join('');
@@ -5977,6 +6069,689 @@ window.showEnterpriseAlerts = showEnterpriseAlerts;
 window.generateExecutiveReport = generateExecutiveReport;
 window.hideEnterpriseModule = hideEnterpriseModule;
 window.refreshEnterpriseModules = refreshEnterpriseModules;
+// ===== BACKGROUND SCANS MANAGEMENT =====
+function loadBackgroundScans() {
+    fetch('/api/v1/automation/background-scans', {
+        headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayBackgroundScans(data.tasks);
+            const statusEl = document.getElementById('bg-scan-status');
+            if (statusEl) {
+                const activeCount = data.tasks.filter(t => t.is_active).length;
+                statusEl.textContent = `${activeCount} Active`;
+                statusEl.className = activeCount > 0 ? 'card-status running' : 'card-status';
+            }
+        }
+    })
+    .catch(error => console.error('Error loading background scans:', error));
+}
+
+function displayBackgroundScans(tasks) {
+    const container = document.getElementById('background-scans-list');
+    if (!container) return;
+
+    if (tasks.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-sync-alt fa-2x"></i>
+                <p>No background scans configured</p>
+                <small>Click "Create Task" to set up automated scanning</small>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = tasks.slice(0, 3).map(task => `
+        <div class="task-item ${task.is_active ? 'active' : ''}">
+            <div class="task-info">
+                <div class="task-name">${task.name}</div>
+                <div class="task-details">${task.provider.toUpperCase()} - Every ${task.interval_minutes} min</div>
+            </div>
+            <div class="task-actions">
+                <button class="btn-icon" onclick="testBackgroundScan(${task.id})" title="Test">
+                    <i class="fas fa-vial"></i>
+                </button>
+                <div class="task-toggle ${task.is_active ? 'active' : ''}">
+                    <span class="toggle-slider"></span>
+                </div>
+            </div>
+        </div>
+    `).join('');
+}
+
+function testBackgroundScan(taskId) {
+    if (!confirm('This will run a test scan in 10 seconds and send you an email. Continue?')) return;
+
+    fetch(`/api/v1/automation/background-scans/${taskId}/test`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+        } else {
+            showNotification('Test failed: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to start test', 'error');
+    });
+}
+
+function showCreateBackgroundScanModal() {
+    const modal = document.getElementById('finding-modal');
+    const modalContent = document.getElementById('modal-content-dynamic');
+
+    // First, get available credentials
+    fetch('/api/credentials', {
+        headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    })
+    .then(response => response.json())
+    .then(credData => {
+        const credentials = credData.credentials || [];
+
+        modalContent.innerHTML = `
+            <div class="automation-modal">
+                <h2><i class="fas fa-sync-alt"></i> Create Background Scan</h2>
+                <p class="modal-subtitle">Set up automated recurring security scans</p>
+
+                <form id="create-bg-scan-form">
+                    <div class="form-group">
+                        <label for="bg-scan-name">Task Name *</label>
+                        <input type="text" id="bg-scan-name" class="form-control" placeholder="e.g. AWS Production Scan" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="bg-scan-provider">Cloud Provider *</label>
+                            <select id="bg-scan-provider" class="form-control" required onchange="filterBgCredentials()">
+                                <option value="">Select provider...</option>
+                                <option value="aws">Amazon Web Services (AWS)</option>
+                                <option value="gcp">Google Cloud Platform (GCP)</option>
+                                <option value="azure">Microsoft Azure</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group col-md-6">
+                            <label for="bg-scan-credential">Credentials *</label>
+                            <select id="bg-scan-credential" class="form-control" required>
+                                <option value="">Select credentials...</option>
+                                ${credentials.map(c => `<option value="${c.id}" data-provider="${c.provider}">${c.name} (${c.provider.toUpperCase()})</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="bg-scan-interval">Scan Interval *</label>
+                        <select id="bg-scan-interval" class="form-control" required>
+                            <option value="30">Every 30 minutes</option>
+                            <option value="60" selected>Every 1 hour</option>
+                            <option value="120">Every 2 hours</option>
+                            <option value="180">Every 3 hours</option>
+                            <option value="360">Every 6 hours</option>
+                            <option value="720">Every 12 hours</option>
+                            <option value="1440">Every 24 hours</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="bg-scan-email" checked>
+                            <span>Send email notifications</span>
+                        </label>
+                    </div>
+
+                    <div class="form-group" id="email-options" style="margin-left: 20px;">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="bg-scan-email-findings">
+                            <span>Only send emails when findings are detected</span>
+                        </label>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Background Scan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        modal.style.display = 'block';
+
+        // Handle form submission
+        document.getElementById('create-bg-scan-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            createBackgroundScan();
+        });
+
+        // Toggle email options
+        document.getElementById('bg-scan-email').addEventListener('change', function() {
+            document.getElementById('email-options').style.display = this.checked ? 'block' : 'none';
+        });
+    });
+}
+
+function filterBgCredentials() {
+    const provider = document.getElementById('bg-scan-provider').value;
+    const credSelect = document.getElementById('bg-scan-credential');
+    const options = credSelect.querySelectorAll('option');
+
+    options.forEach(opt => {
+        if (opt.value === '') {
+            opt.style.display = 'block';
+        } else {
+            opt.style.display = opt.dataset.provider === provider ? 'block' : 'none';
+        }
+    });
+
+    credSelect.value = '';
+}
+
+function createBackgroundScan() {
+    const data = {
+        name: document.getElementById('bg-scan-name').value,
+        provider: document.getElementById('bg-scan-provider').value,
+        credential_id: parseInt(document.getElementById('bg-scan-credential').value),
+        interval_minutes: parseInt(document.getElementById('bg-scan-interval').value),
+        send_email: document.getElementById('bg-scan-email').checked,
+        email_on_findings_only: document.getElementById('bg-scan-email-findings').checked
+    };
+
+    fetch('/api/v1/automation/background-scans', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showNotification(result.message, 'success');
+            closeModal();
+            loadBackgroundScans();
+        } else {
+            showNotification('Error: ' + result.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to create background scan', 'error');
+    });
+}
+
+function viewAllBackgroundScans() {
+    const modal = document.getElementById('finding-modal');
+    const modalContent = document.getElementById('modal-content-dynamic');
+
+    fetch('/api/v1/automation/background-scans', {
+        headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            modalContent.innerHTML = `
+                <div class="manage-modal">
+                    <h2><i class="fas fa-list"></i> Manage Background Scans</h2>
+                    <div class="tasks-management">
+                        ${data.tasks.length === 0 ? '<p class="text-muted">No background scans configured</p>' :
+                        data.tasks.map(task => `
+                            <div class="task-card">
+                                <div class="task-header">
+                                    <h4>${task.name}</h4>
+                                    <span class="badge ${task.is_active ? 'badge-success' : 'badge-secondary'}">
+                                        ${task.is_active ? 'Active' : 'Inactive'}
+                                    </span>
+                                </div>
+                                <div class="task-details-grid">
+                                    <div><strong>Provider:</strong> ${task.provider.toUpperCase()}</div>
+                                    <div><strong>Interval:</strong> Every ${task.interval_minutes} minutes</div>
+                                    <div><strong>Email:</strong> ${task.send_email ? 'Yes' : 'No'}</div>
+                                    <div><strong>Last Run:</strong> ${task.last_run ? new Date(task.last_run).toLocaleString() : 'Never'}</div>
+                                    <div><strong>Next Run:</strong> ${task.next_run ? new Date(task.next_run).toLocaleString() : 'Not scheduled'}</div>
+                                </div>
+                                <div class="task-actions-row">
+                                    <button class="btn btn-sm btn-primary" onclick="testBackgroundScan(${task.id})">
+                                        <i class="fas fa-vial"></i> Test
+                                    </button>
+                                    <button class="btn btn-sm btn-danger" onclick="deleteBackgroundScan(${task.id})">
+                                        <i class="fas fa-trash"></i> Delete
+                                    </button>
+                                </div>
+                            </div>
+                        `).join('')}
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                        <button class="btn btn-primary" onclick="closeModal(); showCreateBackgroundScanModal()">
+                            <i class="fas fa-plus"></i> Create New
+                        </button>
+                    </div>
+                </div>
+            `;
+            modal.style.display = 'block';
+        }
+    });
+}
+
+function deleteBackgroundScan(taskId) {
+    if (!confirm('Are you sure you want to delete this background scan task?')) return;
+
+    fetch(`/api/v1/automation/background-scans/${taskId}`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Background scan deleted', 'success');
+            viewAllBackgroundScans(); // Refresh the list
+            loadBackgroundScans(); // Refresh the dashboard
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    });
+}
+
+// ===== SCHEDULED SCANS MANAGEMENT =====
+function loadScheduledScans() {
+    fetch('/api/v1/automation/scheduled-scans', {
+        headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            displayScheduledScans(data.tasks);
+            const statusEl = document.getElementById('scheduled-scan-status');
+            if (statusEl) {
+                const activeCount = data.tasks.filter(t => t.is_active).length;
+                statusEl.textContent = `${activeCount} Scheduled`;
+                statusEl.className = activeCount > 0 ? 'card-status active' : 'card-status';
+            }
+        }
+    })
+    .catch(error => console.error('Error loading scheduled scans:', error));
+}
+
+function displayScheduledScans(tasks) {
+    const container = document.getElementById('scheduled-scans-list');
+    if (!container) return;
+
+    if (tasks.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state">
+                <i class="fas fa-calendar-alt fa-2x"></i>
+                <p>No scheduled scans configured</p>
+                <small>Click "New Schedule" to set up recurring scans</small>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = tasks.slice(0, 3).map(task => {
+        let scheduleText = `${task.schedule_type} at ${task.schedule_time}`;
+        if (task.schedule_day) {
+            scheduleText += ` (${task.schedule_day})`;
+        }
+
+        return `
+            <div class="task-item ${task.is_active ? 'active' : ''}">
+                <div class="task-info">
+                    <div class="task-name">${task.name}</div>
+                    <div class="task-details">${task.provider.toUpperCase()} - ${scheduleText}</div>
+                </div>
+                <div class="task-actions">
+                    <button class="btn-icon" onclick="testScheduledScan(${task.id})" title="Test">
+                        <i class="fas fa-vial"></i>
+                    </button>
+                    <div class="task-toggle ${task.is_active ? 'active' : ''}">
+                        <span class="toggle-slider"></span>
+                    </div>
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function testScheduledScan(taskId) {
+    if (!confirm('This will run a test scan in 10 seconds and send you an email. Continue?')) return;
+
+    fetch(`/api/v1/automation/scheduled-scans/${taskId}/test`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+        } else {
+            showNotification('Test failed: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to start test', 'error');
+    });
+}
+
+function showCreateScheduledScanModal() {
+    const modal = document.getElementById('finding-modal');
+    const modalContent = document.getElementById('modal-content-dynamic');
+
+    // Get available credentials
+    fetch('/api/credentials', {
+        headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    })
+    .then(response => response.json())
+    .then(credData => {
+        const credentials = credData.credentials || [];
+
+        modalContent.innerHTML = `
+            <div class="automation-modal">
+                <h2><i class="fas fa-calendar-alt"></i> Create Scheduled Scan</h2>
+                <p class="modal-subtitle">Set up time-based recurring security scans</p>
+
+                <form id="create-sched-scan-form">
+                    <div class="form-group">
+                        <label for="sched-scan-name">Task Name *</label>
+                        <input type="text" id="sched-scan-name" class="form-control" placeholder="e.g. Weekly AWS Audit" required>
+                    </div>
+
+                    <div class="form-row">
+                        <div class="form-group col-md-6">
+                            <label for="sched-scan-provider">Cloud Provider *</label>
+                            <select id="sched-scan-provider" class="form-control" required onchange="filterSchedCredentials()">
+                                <option value="">Select provider...</option>
+                                <option value="aws">Amazon Web Services (AWS)</option>
+                                <option value="gcp">Google Cloud Platform (GCP)</option>
+                                <option value="azure">Microsoft Azure</option>
+                            </select>
+                        </div>
+
+                        <div class="form-group col-md-6">
+                            <label for="sched-scan-credential">Credentials *</label>
+                            <select id="sched-scan-credential" class="form-control" required>
+                                <option value="">Select credentials...</option>
+                                ${credentials.map(c => `<option value="${c.id}" data-provider="${c.provider}">${c.name} (${c.provider.toUpperCase()})</option>`).join('')}
+                            </select>
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sched-scan-type">Schedule Type *</label>
+                        <select id="sched-scan-type" class="form-control" required onchange="updateScheduleFields()">
+                            <option value="">Select schedule...</option>
+                            <option value="daily">Daily</option>
+                            <option value="weekly">Weekly</option>
+                            <option value="monthly">Monthly</option>
+                        </select>
+                    </div>
+
+                    <div id="schedule-day-field" class="form-group" style="display: none;">
+                        <label id="schedule-day-label">Day</label>
+                        <select id="sched-scan-day" class="form-control">
+                            <option value="">Select day...</option>
+                        </select>
+                    </div>
+
+                    <div class="form-group">
+                        <label for="sched-scan-time">Time (24-hour format) *</label>
+                        <input type="time" id="sched-scan-time" class="form-control" value="02:00" required>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="checkbox-label">
+                            <input type="checkbox" id="sched-scan-email" checked>
+                            <span>Send email notifications</span>
+                        </label>
+                    </div>
+
+                    <div class="modal-actions">
+                        <button type="button" class="btn btn-secondary" onclick="closeModal()">Cancel</button>
+                        <button type="submit" class="btn btn-primary">
+                            <i class="fas fa-plus"></i> Create Scheduled Scan
+                        </button>
+                    </div>
+                </form>
+            </div>
+        `;
+
+        modal.style.display = 'block';
+
+        // Handle form submission
+        document.getElementById('create-sched-scan-form').addEventListener('submit', function(e) {
+            e.preventDefault();
+            createScheduledScan();
+        });
+    });
+}
+
+function filterSchedCredentials() {
+    const provider = document.getElementById('sched-scan-provider').value;
+    const credSelect = document.getElementById('sched-scan-credential');
+    const options = credSelect.querySelectorAll('option');
+
+    options.forEach(opt => {
+        if (opt.value === '') {
+            opt.style.display = 'block';
+        } else {
+            opt.style.display = opt.dataset.provider === provider ? 'block' : 'none';
+        }
+    });
+
+    credSelect.value = '';
+}
+
+function updateScheduleFields() {
+    const scheduleType = document.getElementById('sched-scan-type').value;
+    const dayField = document.getElementById('schedule-day-field');
+    const daySelect = document.getElementById('sched-scan-day');
+    const dayLabel = document.getElementById('schedule-day-label');
+
+    if (scheduleType === 'weekly') {
+        dayLabel.textContent = 'Day of Week *';
+        daySelect.innerHTML = `
+            <option value="">Select day...</option>
+            <option value="monday">Monday</option>
+            <option value="tuesday">Tuesday</option>
+            <option value="wednesday">Wednesday</option>
+            <option value="thursday">Thursday</option>
+            <option value="friday">Friday</option>
+            <option value="saturday">Saturday</option>
+            <option value="sunday">Sunday</option>
+        `;
+        daySelect.required = true;
+        dayField.style.display = 'block';
+    } else if (scheduleType === 'monthly') {
+        dayLabel.textContent = 'Day of Month *';
+        let options = '<option value="">Select day...</option>';
+        for (let i = 1; i <= 31; i++) {
+            options += `<option value="${i}">${i}</option>`;
+        }
+        daySelect.innerHTML = options;
+        daySelect.required = true;
+        dayField.style.display = 'block';
+    } else {
+        dayField.style.display = 'none';
+        daySelect.required = false;
+    }
+}
+
+function createScheduledScan() {
+    const data = {
+        name: document.getElementById('sched-scan-name').value,
+        provider: document.getElementById('sched-scan-provider').value,
+        credential_id: parseInt(document.getElementById('sched-scan-credential').value),
+        schedule_type: document.getElementById('sched-scan-type').value,
+        schedule_time: document.getElementById('sched-scan-time').value,
+        schedule_day: document.getElementById('sched-scan-day').value || null,
+        send_email: document.getElementById('sched-scan-email').checked
+    };
+
+    fetch('/api/v1/automation/scheduled-scans', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        },
+        body: JSON.stringify(data)
+    })
+    .then(response => response.json())
+    .then(result => {
+        if (result.success) {
+            showNotification(result.message, 'success');
+            closeModal();
+            loadScheduledScans();
+        } else {
+            showNotification('Error: ' + result.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to create scheduled scan', 'error');
+    });
+}
+
+function viewAllScheduledScans() {
+    const modal = document.getElementById('finding-modal');
+    const modalContent = document.getElementById('modal-content-dynamic');
+
+    fetch('/api/v1/automation/scheduled-scans', {
+        headers: { 'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            modalContent.innerHTML = `
+                <div class="manage-modal">
+                    <h2><i class="fas fa-calendar-alt"></i> Manage Scheduled Scans</h2>
+                    <div class="tasks-management">
+                        ${data.tasks.length === 0 ? '<p class="text-muted">No scheduled scans configured</p>' :
+                        data.tasks.map(task => {
+                            let scheduleText = `${task.schedule_type.charAt(0).toUpperCase() + task.schedule_type.slice(1)}`;
+                            if (task.schedule_day) {
+                                scheduleText += ` on ${task.schedule_day}`;
+                            }
+                            scheduleText += ` at ${task.schedule_time}`;
+
+                            return `
+                                <div class="task-card">
+                                    <div class="task-header">
+                                        <h4>${task.name}</h4>
+                                        <span class="badge ${task.is_active ? 'badge-success' : 'badge-secondary'}">
+                                            ${task.is_active ? 'Active' : 'Inactive'}
+                                        </span>
+                                    </div>
+                                    <div class="task-details-grid">
+                                        <div><strong>Provider:</strong> ${task.provider.toUpperCase()}</div>
+                                        <div><strong>Schedule:</strong> ${scheduleText}</div>
+                                        <div><strong>Email:</strong> ${task.send_email ? 'Yes' : 'No'}</div>
+                                        <div><strong>Last Run:</strong> ${task.last_run ? new Date(task.last_run).toLocaleString() : 'Never'}</div>
+                                        <div><strong>Next Run:</strong> ${task.next_run ? new Date(task.next_run).toLocaleString() : 'Not scheduled'}</div>
+                                    </div>
+                                    <div class="task-actions-row">
+                                        <button class="btn btn-sm btn-primary" onclick="testScheduledScan(${task.id})">
+                                            <i class="fas fa-vial"></i> Test
+                                        </button>
+                                        <button class="btn btn-sm btn-danger" onclick="deleteScheduledScan(${task.id})">
+                                            <i class="fas fa-trash"></i> Delete
+                                        </button>
+                                    </div>
+                                </div>
+                            `;
+                        }).join('')}
+                    </div>
+                    <div class="modal-actions">
+                        <button class="btn btn-secondary" onclick="closeModal()">Close</button>
+                        <button class="btn btn-primary" onclick="closeModal(); showCreateScheduledScanModal()">
+                            <i class="fas fa-plus"></i> Create New
+                        </button>
+                    </div>
+                </div>
+            `;
+            modal.style.display = 'block';
+        }
+    });
+}
+
+function deleteScheduledScan(taskId) {
+    if (!confirm('Are you sure you want to delete this scheduled scan task?')) return;
+
+    fetch(`/api/v1/automation/scheduled-scans/${taskId}`, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Scheduled scan deleted', 'success');
+            viewAllScheduledScans(); // Refresh the list
+            loadScheduledScans(); // Refresh the dashboard
+        } else {
+            showNotification('Error: ' + data.error, 'error');
+        }
+    });
+}
+
+// ===== AUTOMATION RULES TEST =====
+function testAutomationRule(ruleId) {
+    if (!confirm('This will test the automation rule in 10 seconds and send you an email. Continue?')) return;
+
+    fetch(`/api/v1/automation/rules/${ruleId}/test`, {
+        method: 'POST',
+        headers: {
+            'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Content-Type': 'application/json'
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification(data.message, 'success');
+        } else {
+            showNotification('Test failed: ' + data.error, 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        showNotification('Failed to start test', 'error');
+    });
+}
+
+window.loadBackgroundScans = loadBackgroundScans;
+window.testBackgroundScan = testBackgroundScan;
+window.showCreateBackgroundScanModal = showCreateBackgroundScanModal;
+window.viewAllBackgroundScans = viewAllBackgroundScans;
+window.deleteBackgroundScan = deleteBackgroundScan;
+window.filterBgCredentials = filterBgCredentials;
+window.createBackgroundScan = createBackgroundScan;
+window.loadScheduledScans = loadScheduledScans;
+window.testScheduledScan = testScheduledScan;
+window.showCreateScheduledScanModal = showCreateScheduledScanModal;
+window.viewAllScheduledScans = viewAllScheduledScans;
+window.deleteScheduledScan = deleteScheduledScan;
+window.filterSchedCredentials = filterSchedCredentials;
+window.updateScheduleFields = updateScheduleFields;
+window.createScheduledScan = createScheduledScan;
+window.testAutomationRule = testAutomationRule;
 window.showEnterpriseSettings = showEnterpriseSettings;
 window.startBackgroundScan = startBackgroundScan;
 window.saveBackgroundScanSettings = saveBackgroundScanSettings;
@@ -5995,38 +6770,111 @@ window.closeModal = closeModal;
 
 // Missing functions that were causing reference errors
 
-// Dark mode toggle function
+// Dark mode toggle function with full UI refresh
 function toggleTheme(suppressNotification = false) {
     const body = document.body;
     const isDark = body.classList.toggle('dark-mode');
-    
+
     // Save theme preference to localStorage
     localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    
-    // Apply theme to all sections including reports
-    const sections = document.querySelectorAll('.content-section, .main-content, .sidebar, .header, .reports-section, .compliance-section, .topology-section, .automation-section, .settings-section, .enterprise-section');
-    sections.forEach(section => {
+
+    console.log(`🎨 Switching to ${isDark ? 'dark' : 'light'} mode...`);
+
+    // Reload page to apply theme changes across all components
+    setTimeout(() => {
+        location.reload();
+    }, 100);
+}
+
+// Helper function to refresh dynamic elements
+function refreshDynamicElements(isDark) {
+    // Refresh all data tables
+    const tables = document.querySelectorAll('table, .data-table');
+    tables.forEach(table => {
         if (isDark) {
-            section.classList.add('dark-mode');
+            table.classList.add('dark-mode');
         } else {
-            section.classList.remove('dark-mode');
+            table.classList.remove('dark-mode');
         }
     });
-    
-    // Apply dark mode to specific elements that might have white backgrounds
-    const elementsToStyle = document.querySelectorAll('.modal-content, .notification-item, .card, .btn, .form-control, .table, .progress-bar');
-    elementsToStyle.forEach(element => {
+
+    // Refresh all code blocks
+    const codeBlocks = document.querySelectorAll('pre, code');
+    codeBlocks.forEach(block => {
         if (isDark) {
-            element.classList.add('dark-mode');
+            block.classList.add('dark-mode');
         } else {
-            element.classList.remove('dark-mode');
+            block.classList.remove('dark-mode');
         }
     });
-    
-    // Only show notification if not suppressed
-    if (!suppressNotification) {
-        showNotification(`Switched to ${isDark ? 'dark' : 'light'} mode`, 'success');
+
+    // Refresh all panels and containers
+    const panels = document.querySelectorAll('.panel, .box, .container-fluid, .row, .col');
+    panels.forEach(panel => {
+        if (isDark) {
+            panel.classList.add('dark-mode');
+        } else {
+            panel.classList.remove('dark-mode');
+        }
+    });
+}
+
+// Helper function to update scrollbar styles
+function updateScrollbarStyles(isDark) {
+    const style = document.getElementById('dynamic-scrollbar-styles') || document.createElement('style');
+    style.id = 'dynamic-scrollbar-styles';
+
+    if (isDark) {
+        style.textContent = `
+            ::-webkit-scrollbar {
+                width: 10px;
+                height: 10px;
+            }
+            ::-webkit-scrollbar-track {
+                background: #1a1a1a;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #444;
+                border-radius: 5px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #555;
+            }
+        `;
+    } else {
+        style.textContent = `
+            ::-webkit-scrollbar {
+                width: 10px;
+                height: 10px;
+            }
+            ::-webkit-scrollbar-track {
+                background: #f1f1f1;
+            }
+            ::-webkit-scrollbar-thumb {
+                background: #888;
+                border-radius: 5px;
+            }
+            ::-webkit-scrollbar-thumb:hover {
+                background: #555;
+            }
+        `;
     }
+
+    if (!document.getElementById('dynamic-scrollbar-styles')) {
+        document.head.appendChild(style);
+    }
+}
+
+// Helper function to update tooltip styles
+function updateTooltipStyles(isDark) {
+    const tooltips = document.querySelectorAll('[data-tooltip], .tooltip, .popover');
+    tooltips.forEach(tooltip => {
+        if (isDark) {
+            tooltip.classList.add('dark-mode');
+        } else {
+            tooltip.classList.remove('dark-mode');
+        }
+    });
 }
 
 // Initialize theme on page load
@@ -7182,22 +8030,12 @@ function setupIntegrations() {
 }
 
 function enableRealTimeMonitoring() {
-    // Enable real-time features if available
+    // Enable real-time features if available (silently)
     const features = ['notifications', 'scanning', 'alerts'];
-    
+
     features.forEach(feature => {
-        console.log(`Enabling real-time ${feature}...`);
-        
-        if (typeof Toastify !== 'undefined') {
-            Toastify({
-                text: `Real-time ${feature} monitoring enabled`,
-                duration: 2000,
-                gravity: "top",
-                position: "right",
-                style: { background: "#22c55e" },
-                stopOnFocus: true
-            }).showToast();
-        }
+        console.log(`✅ Real-time ${feature} monitoring enabled`);
+        // Notifications removed - no need to show toast on every page load
     });
 }
 
@@ -7769,12 +8607,38 @@ document.addEventListener('DOMContentLoaded', function() {
         loadNotifications();
     }, 1000);
 
-    // Load automation rules if on dashboard
-    if (window.location.pathname === '/dashboard' || window.location.pathname === '/') {
+    // Load automation data when automation section is viewed (lazy load)
+    // This improves dashboard load performance
+    document.addEventListener('click', function(e) {
+        const automationLink = e.target.closest('a[href="#automation"]');
+        if (automationLink && !window.automationDataLoaded) {
+            window.automationDataLoaded = true;
+            setTimeout(() => {
+                if (typeof refreshAutomationRules === 'function') {
+                    refreshAutomationRules();
+                }
+                if (typeof loadBackgroundScans === 'function') {
+                    loadBackgroundScans();
+                }
+                if (typeof loadScheduledScans === 'function') {
+                    loadScheduledScans();
+                }
+            }, 100);
+        }
+    });
+
+    // Also load if automation section is already active on page load
+    if (window.location.hash === '#automation') {
         setTimeout(() => {
             if (typeof refreshAutomationRules === 'function') {
                 refreshAutomationRules();
             }
-        }, 2000);
+            if (typeof loadBackgroundScans === 'function') {
+                loadBackgroundScans();
+            }
+            if (typeof loadScheduledScans === 'function') {
+                loadScheduledScans();
+            }
+        }, 500);
     }
 });

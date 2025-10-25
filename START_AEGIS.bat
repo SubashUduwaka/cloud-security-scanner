@@ -1,11 +1,11 @@
 @echo off
-title Aegis Cloud Security Scanner
+title Aegis Cloud Security Scanner - Production Server
 color 0A
 
 echo.
 echo ========================================
 echo   AEGIS CLOUD SECURITY SCANNER
-echo   Version 0.8
+echo   Version 0.9.1 - Production Server
 echo ========================================
 echo.
 
@@ -78,17 +78,22 @@ cls
 echo.
 echo ========================================
 echo   AEGIS CLOUD SECURITY SCANNER
+echo   Production Server (Waitress)
 echo ========================================
 echo.
-echo   Status: RUNNING
+echo   Status: STARTING...
 echo   Access URL: http://localhost:5000
 echo.
+echo   Opening browser in 5 seconds...
 echo   Press Ctrl+C to stop the server
 echo ========================================
 echo.
 
-REM Start the application
-python "%APP_DIR%app.py"
+REM Open browser after 5 seconds delay (in background)
+start "" cmd /c "timeout /t 5 /nobreak >nul && start http://localhost:5000"
+
+REM Start the application with production server (Waitress)
+python "%APP_DIR%run_production.py"
 
 REM Keep window open if there's an error
 if errorlevel 1 (

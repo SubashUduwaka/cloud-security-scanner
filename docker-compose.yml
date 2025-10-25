@@ -1,0 +1,58 @@
+version: '3.8'
+
+services:
+  # PostgreSQL Database
+  postgres:
+    image: postgres:15-alpine
+    container_name: aegis-postgres
+    environment:
+      POSTGRES_DB: aegis_scanner
+      POSTGRES_USER: aegis_user
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-i039YiKRaTApIEj3kbiRkpAxsqXejMPMlxgqJrDnPcA}
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    networks:
+      - aegis-network
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U aegis_user -d aegis_scanner"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # Aegis Scanner Application
+  aegis-scanner:
+    build: .
+    container_name: aegis-scanner
+    ports:
+      - "5000:5000"
+    environment:
+      - FLASK_ENV=production
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://aegis_user:${DB_PASSWORD:-i039YiKRaTApIEj3kbiRkpAxsqXejMPMlxgqJrDnPcA}@postgres:5432/aegis_scanner
+    env_file:
+      - .env
+    volumes:
+      - aegis-data:/root/.aegisscanner
+    depends_on:
+      postgres:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:5000/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+    networks:
+      - aegis-network
+
+volumes:
+  aegis-data:
+    driver: local
+  postgres-data:
+    driver: local
+
+networks:
+  aegis-network:
+    driver: bridge

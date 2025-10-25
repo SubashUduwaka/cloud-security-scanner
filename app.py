@@ -11,7 +11,12 @@ from pathlib import Path
 import threading
 import importlib
 import webbrowser
+import tempfile
+import shutil
+import requests
 from tools.aegis_logger import live_logger, init_demo_logging, log_user_action, log_api_call, log_database_operation, log_authentication, log_scan_start, log_scan_complete, log_vulnerability, log_critical_finding
+from tools.update_manager import get_update_manager
+import version
 import google.generativeai as genai
 from apscheduler.schedulers.background import BackgroundScheduler
 import atexit
@@ -40,9 +45,9 @@ os.makedirs(USER_DATA_DIR, exist_ok=True)
 log_file = os.path.join(USER_DATA_DIR, 'aegis_scanner_debug.log')
 ENV_FILE_PATH = os.path.join(USER_DATA_DIR, '.env')
 
-# --- Hardcoded Debug Flag ---
-is_debug = True
-log_level = logging.DEBUG
+# --- Production Mode - Debug Disabled for Security ---
+is_debug = False
+log_level = logging.INFO
 
 # --- Structured Logging Setup ---
 class StructuredLogger:
@@ -354,9 +359,10 @@ def create_app():
     app.config.__getitem__ = patched_app_config_getitem
 
     load_dotenv(dotenv_path=ENV_FILE_PATH)
-    
+
     # Import and initialize secrets manager for production-ready secrets handling
     from tools.secrets_manager import secrets_manager
+    app.config['SECRETS_MANAGER'] = secrets_manager  # Store globally for health checks
     app.config['SECRET_KEY'] = secrets_manager.get_secret_key()
     app.config['START_TIME'] = datetime.now()
     app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
@@ -566,6 +572,54 @@ class User(db.Model, UserMixin):
     monthly_scans_used = db.Column(db.Integer, default=0, nullable=False)
     last_scan_reset = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
     allowed_monthly_scans = db.Column(db.Integer, default=5, nullable=False)  # 5 for BASIC, unlimited for PRO
+
+    # Password Policy & Security Info
+    password_changed_date = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    last_security_info_update = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    security_info_email_confirmed = db.Column(db.Boolean, default=False)
+
+    @property
+    def password_age_days(self):
+        """Calculate how many days since password was last changed"""
+        try:
+            if not hasattr(self, 'password_changed_date') or not self.password_changed_date:
+                return 0
+            delta = datetime.now(timezone.utc) - self.password_changed_date
+            return delta.days
+        except:
+            return 0
+
+    @property
+    def password_expires_in_days(self):
+        """Days until password expires (90 day policy)"""
+        try:
+            return max(0, 90 - self.password_age_days)
+        except:
+            return 90
+
+    @property
+    def password_expired(self):
+        """Check if password has expired"""
+        try:
+            return self.password_age_days >= 90
+        except:
+            return False
+
+    @property
+    def password_expiring_soon(self):
+        """Check if password expires in next 10 days"""
+        try:
+            return 10 >= self.password_expires_in_days > 0
+        except:
+            return False
+
+    @property
+    def has_valid_2fa(self):
+        """Accurately check if 2FA is properly enabled"""
+        try:
+            return self.is_2fa_enabled and self.otp_secret is not None and len(self.otp_secret) > 0
+        except:
+            return False
 
     # Organization Support (Optional)
     organization_id = db.Column(db.Integer, db.ForeignKey('organization.id'), nullable=True)
@@ -891,6 +945,52 @@ class AutomationRule(db.Model):
     last_executed = db.Column(db.DateTime)
     execution_count = db.Column(db.Integer, default=0)
 
+class BackgroundScanTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    provider = db.Column(db.String(20), nullable=False)  # 'aws', 'gcp', 'azure'
+    credential_id = db.Column(db.Integer, nullable=False)
+    interval_minutes = db.Column(db.Integer, default=60)  # How often to run
+    is_active = db.Column(db.Boolean, default=True)
+    send_email = db.Column(db.Boolean, default=True)
+    email_on_findings_only = db.Column(db.Boolean, default=False)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    last_run = db.Column(db.DateTime)
+    next_run = db.Column(db.DateTime)
+    job_id = db.Column(db.String(100))  # APScheduler job ID
+
+class ScheduledScanTask(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), nullable=False)
+    name = db.Column(db.String(100), nullable=False)
+    provider = db.Column(db.String(20), nullable=False)
+    credential_id = db.Column(db.Integer, nullable=False)
+    schedule_type = db.Column(db.String(20), nullable=False)  # 'daily', 'weekly', 'monthly'
+    schedule_time = db.Column(db.String(10), nullable=False)  # HH:MM format
+    schedule_day = db.Column(db.String(20))  # For weekly (monday, tuesday, etc) or monthly (1-31)
+    is_active = db.Column(db.Boolean, default=True)
+    send_email = db.Column(db.Boolean, default=True)
+    created_at = db.Column(db.DateTime, default=lambda: datetime.now(timezone.utc))
+    last_run = db.Column(db.DateTime)
+    next_run = db.Column(db.DateTime)
+    job_id = db.Column(db.String(100))
+
+# --- Initialize Database Tables ---
+# Create all tables after model definitions (for Docker/Gunicorn deployment)
+# Note: In multi-worker environments (Gunicorn), only the first worker will succeed.
+# Others may get UniqueViolation errors which are safe to ignore.
+with app.app_context():
+    try:
+        db.create_all()
+        logging.info("[OK] All database tables created/verified successfully")
+    except Exception as e:
+        # Ignore duplicate key errors from multiple workers trying to create tables simultaneously
+        if "duplicate key" in str(e).lower() or "uniqueviolation" in str(e).lower():
+            logging.debug(f"Database tables already exist (multi-worker initialization)")
+        else:
+            logging.error(f"[ERROR] Error creating database tables: {e}")
+
 # --- App Context Functions and Decorators ---
 @app.context_processor
 def inject_csrf_token():
@@ -905,6 +1005,11 @@ def admin_required(f):
     @wraps(f)
     def decorated_function(*args, **kwargs):
         if not current_user.is_authenticated or not current_user.is_admin:
+            # For API routes, return JSON instead of redirecting
+            if request.path.startswith('/api/') or request.path.startswith('/admin/'):
+                if not current_user.is_authenticated:
+                    return jsonify({"error": "Authentication required"}), 401
+                return jsonify({"error": "Admin access required"}), 403
             flash("You do not have permission to access this page.", "error")
             return redirect(url_for('dashboard'))
         return f(*args, **kwargs)
@@ -939,9 +1044,12 @@ def check_2fa(f):
     def decorated_function(*args, **kwargs):
         if session.get('guest_mode'):
             return f(*args, **kwargs)
-            
+
         if current_user.is_authenticated and current_user.is_2fa_enabled:
             if session.get('2fa_passed') is not True:
+                # For API routes, return JSON instead of redirecting
+                if request.path.startswith('/api/'):
+                    return jsonify({"error": "2FA verification required"}), 403
                 flash("Please complete the 2FA verification to continue.", "warning")
                 return redirect(url_for('verify_2fa_login'))
         return f(*args, **kwargs)
@@ -1216,8 +1324,11 @@ def _create_pdf_report(results):
         content.append(title)
         content.append(Spacer(1, 20))
         
-        # Date
-        date_text = f"Generated on: {datetime.now(timezone.utc).strftime('%B %d, %Y at %I:%M %p UTC')}"
+        # Date - Sri Lanka timezone (UTC+5:30)
+        from datetime import timedelta
+        sl_timezone = timezone(timedelta(hours=5, minutes=30))
+        sl_time = datetime.now(sl_timezone)
+        date_text = f"Generated on: {sl_time.strftime('%B %d, %Y at %I:%M %p')} (Sri Lanka Time - UTC+5:30)"
         date_para = Paragraph(date_text, styles['Normal'])
         content.append(date_para)
         content.append(Spacer(1, 20))
@@ -1485,11 +1596,11 @@ def register_post():
         if admin_key:
             admin_key = security_validator.sanitize_string(admin_key)
             if admin_key == os.getenv('ADMIN_REGISTRATION_KEY'):
-                if User.query.filter_by(is_admin=True).count() < 2:
+                if User.query.filter_by(is_admin=True).count() < 4:
                     user.is_admin = True
                     logging.info(f"Promoting user '{username}' to admin with valid key")
                 else:
-                    logging.warning("Admin key provided but max admin count reached")
+                    logging.warning("Admin key provided but max admin count (4) reached")
         
         db.session.add(user)
         db.session.commit()
@@ -1580,39 +1691,7 @@ def clear_license():
 def help_page():
     return render_template('help.html')
 
-@app.route('/debug-guest')
-@login_or_guest_required
-def debug_guest():
-    """Debug route to check guest mode status"""
-    debug_info = {
-        'is_guest_mode': session.get('guest_mode', False),
-        'session_keys': list(session.keys()),
-        'guest_credentials': session.get('guest_credentials', []),
-        'is_authenticated': current_user.is_authenticated if hasattr(current_user, 'is_authenticated') else False
-    }
-    return f"<pre>{debug_info}</pre>"
-
-@app.route('/debug-dashboard-creds')
-@login_or_guest_required
-def debug_dashboard_creds():
-    """Debug route to see what credentials are passed to dashboard"""
-    if session.get('guest_mode'):
-        guest_credentials = session.get('guest_credentials', [])
-        credentials = []
-        for guest_cred in guest_credentials:
-            class GuestCredential:
-                def __init__(self, cred_dict):
-                    self.id = cred_dict.get('id')
-                    self.profile_name = cred_dict.get('profile_name')
-                    self.provider = cred_dict.get('provider')
-                    self.encrypted_key_1 = cred_dict.get('encrypted_key_1')
-                    self.encrypted_key_2 = cred_dict.get('encrypted_key_2')
-            credentials.append(GuestCredential(guest_cred))
-    else:
-        credentials = current_user.credentials.all() if hasattr(current_user, 'credentials') else []
-    
-    cred_list = [{"id": c.id, "profile_name": c.profile_name, "provider": c.provider} for c in credentials]
-    return f"<pre>Credentials for template: {cred_list}</pre>"
+# Debug routes removed for production security
 
 @app.route('/request-reset', methods=['GET', 'POST'])
 @limiter.limit("5 per 15 minutes")
@@ -2158,7 +2237,60 @@ def history():
     results = pagination.items
     history_list = [{"id": r.id, "service": r.service, "resource": r.resource, "status": r.status, "issue": r.issue, "timestamp": r.timestamp.isoformat()} for r in results]
     return jsonify({"historical_scans": history_list, "page": pagination.page, "total_pages": pagination.pages, "has_next": pagination.has_next, "has_prev": pagination.has_prev})
-    
+
+@app.route('/api/v1/latest_scan', methods=['GET'])
+@login_required
+def get_latest_scan():
+    """
+    Get the latest scan results for the current user.
+    Returns all results from the most recent scan timestamp.
+    """
+    try:
+        # Determine user ID
+        if session.get('guest_mode'):
+            # For guest mode, we don't have persistent results
+            return jsonify({"results": [], "timestamp": None, "has_results": False})
+
+        user_id = current_user.id
+
+        # Get the most recent scan timestamp for this user
+        latest_scan = ScanResult.query.filter_by(user_id=user_id).order_by(ScanResult.timestamp.desc()).first()
+
+        if not latest_scan:
+            return jsonify({"results": [], "timestamp": None, "has_results": False})
+
+        latest_timestamp = latest_scan.timestamp
+
+        # Get all results from this scan (same timestamp)
+        scan_results = ScanResult.query.filter_by(
+            user_id=user_id,
+            timestamp=latest_timestamp
+        ).all()
+
+        # Format results
+        results_list = []
+        for result in scan_results:
+            results_list.append({
+                "service": result.service,
+                "resource": result.resource,
+                "status": result.status,
+                "issue": result.issue,
+                "remediation": result.remediation,
+                "doc_url": result.doc_url,
+                "severity": result.severity if hasattr(result, 'severity') else 'medium'
+            })
+
+        return jsonify({
+            "results": results_list,
+            "timestamp": latest_timestamp.isoformat(),
+            "has_results": True,
+            "count": len(results_list)
+        })
+
+    except Exception as e:
+        logging.error(f"Error fetching latest scan: {e}", exc_info=True)
+        return jsonify({"error": "Failed to fetch latest scan results"}), 500
+
 @app.route('/api/v1/suppress_finding', methods=['POST'])
 @login_required
 @check_2fa
@@ -2336,10 +2468,19 @@ def generate_csv_report():
     writer = csv.writer(output)
     # Write the header
     writer.writerow(['Timestamp', 'Service', 'Resource', 'Status', 'Issue', 'Remediation', 'Documentation URL'])
-    # Write the data
+    # Write the data - Convert timestamps to Sri Lanka timezone
+    from datetime import timedelta
+    sl_timezone = timezone(timedelta(hours=5, minutes=30))
     for result in scan_results:
+        # Convert UTC timestamp to Sri Lanka time
+        if result.timestamp:
+            sl_time = result.timestamp.replace(tzinfo=timezone.utc).astimezone(sl_timezone)
+            timestamp_str = sl_time.strftime('%Y-%m-%d %I:%M:%S %p') + ' (SL Time)'
+        else:
+            timestamp_str = 'N/A'
+
         writer.writerow([
-            result.timestamp.isoformat(),
+            timestamp_str,
             result.service,
             result.resource,
             result.status,
@@ -5723,8 +5864,8 @@ def promote_user(user_id):
     if user_to_promote and user_to_promote.is_admin:
         flash(f"User '{user_to_promote.username}' is already an administrator.", 'info')
         return redirect(url_for('admin_dashboard'))
-    if admin_count >= 2:
-        flash('Cannot promote user. The maximum of 2 administrators has been reached.', 'error')
+    if admin_count >= 4:
+        flash('Cannot promote user. The maximum of 4 administrators has been reached.', 'error')
         return redirect(url_for('admin_dashboard'))
     if user_to_promote:
         user_to_promote.is_admin = True
@@ -5735,6 +5876,270 @@ def promote_user(user_id):
         flash('User not found.', 'error')
     return redirect(url_for('admin_dashboard'))
 
+# Cloud Instance Detection Function
+def is_cloud_instance():
+    """Detect if running in cloud environment"""
+    # AWS EC2
+    try:
+        response = requests.get('http://169.254.169.254/latest/meta-data/', timeout=1)
+        if response.status_code == 200:
+            return True
+    except:
+        pass
+
+    # GCP
+    try:
+        response = requests.get('http://metadata.google.internal/computeMetadata/v1/',
+                              headers={'Metadata-Flavor': 'Google'}, timeout=1)
+        if response.status_code == 200:
+            return True
+    except:
+        pass
+
+    # Azure
+    try:
+        response = requests.get('http://169.254.169.254/metadata/instance?api-version=2021-02-01',
+                              headers={'Metadata': 'true'}, timeout=1)
+        if response.status_code == 200:
+            return True
+    except:
+        pass
+
+    # Check environment variables
+    cloud_indicators = ['AWS_EXECUTION_ENV', 'GOOGLE_CLOUD_PROJECT', 'WEBSITE_INSTANCE_ID', 'HEROKU_APP_NAME']
+    for indicator in cloud_indicators:
+        if os.getenv(indicator):
+            return True
+
+    return False
+
+# Database Maintenance Routes
+@app.route('/admin/optimize-database', methods=['POST'])
+@login_required
+@admin_required
+@check_2fa
+def optimize_database():
+    """Optimize database by running VACUUM, ANALYZE, and REINDEX"""
+    try:
+        import sqlite3
+        db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+
+        # Close all existing connections
+        db.session.close()
+
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
+
+        # VACUUM - Rebuild database file, reclaiming unused space
+        cursor.execute("VACUUM;")
+
+        # ANALYZE - Update statistics for query optimization
+        cursor.execute("ANALYZE;")
+
+        # REINDEX - Rebuild all indexes
+        cursor.execute("REINDEX;")
+
+        conn.commit()
+        conn.close()
+
+        # Create audit log
+        log_audit("Database Optimized", details=f"Admin: {current_user.username}", user=current_user)
+
+        return jsonify({"message": "Database optimized successfully"}), 200
+    except Exception as e:
+        logging.error(f"Database optimization failed: {e}")
+        return jsonify({"error": f"Optimization failed: {str(e)}"}), 500
+
+@app.route('/admin/clean-old-logs', methods=['POST'])
+@login_required
+@admin_required
+@check_2fa
+def clean_old_logs():
+    """Remove audit logs older than 90 days"""
+    try:
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=90)
+        deleted_count = AuditLog.query.filter(AuditLog.timestamp < cutoff_date).delete()
+        db.session.commit()
+
+        log_audit("Old Logs Cleaned", details=f"Admin: {current_user.username}, Deleted: {deleted_count} logs", user=current_user)
+
+        return jsonify({"message": f"Deleted {deleted_count} old log entries"}), 200
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Log cleanup failed: {e}")
+        return jsonify({"error": f"Cleanup failed: {str(e)}"}), 500
+
+@app.route('/admin/clean-old-scans', methods=['POST'])
+@login_required
+@admin_required
+@check_2fa
+def clean_old_scans():
+    """Remove scan results older than 180 days"""
+    try:
+        cutoff_date = datetime.now(timezone.utc) - timedelta(days=180)
+        deleted_count = ScanResult.query.filter(ScanResult.timestamp < cutoff_date).delete()
+        db.session.commit()
+
+        log_audit("Old Scans Cleaned", details=f"Admin: {current_user.username}, Deleted: {deleted_count} scans", user=current_user)
+
+        return jsonify({"message": f"Deleted {deleted_count} old scan results"}), 200
+    except Exception as e:
+        db.session.rollback()
+        logging.error(f"Scan cleanup failed: {e}")
+        return jsonify({"error": f"Cleanup failed: {str(e)}"}), 500
+
+@app.route('/admin/backup-database', methods=['POST', 'GET'])
+@login_required
+@admin_required
+@check_2fa
+def backup_database():
+    """Create and download database backup"""
+    try:
+        from flask import send_file
+
+        # Check if running in cloud
+        if is_cloud_instance():
+            return jsonify({"error": "Database backup is disabled in cloud deployments"}), 403
+
+        db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+        timestamp = datetime.now(timezone.utc).strftime('%Y-%m-%d_%H-%M-%S')
+        backup_filename = f'aegis_backup_{timestamp}.db'
+        backup_path = os.path.join(tempfile.gettempdir(), backup_filename)
+
+        # Close all connections before backup
+        db.session.close()
+
+        # Copy database file
+        shutil.copy2(db_path, backup_path)
+
+        log_audit("Database Backup Created", details=f"Admin: {current_user.username}, File: {backup_filename}", user=current_user)
+
+        return send_file(
+            backup_path,
+            as_attachment=True,
+            download_name=backup_filename,
+            mimetype='application/octet-stream'
+        )
+    except Exception as e:
+        logging.error(f"Database backup failed: {e}")
+        return jsonify({"error": f"Backup failed: {str(e)}"}), 500
+
+@app.route('/admin/restore-database', methods=['POST'])
+@login_required
+@admin_required
+@check_2fa
+def restore_database():
+    """Restore database from uploaded backup"""
+    try:
+        # Check if running in cloud
+        if is_cloud_instance():
+            return jsonify({"error": "Database restore is disabled in cloud deployments"}), 403
+
+        if 'backup_file' not in request.files:
+            return jsonify({"error": "No backup file provided"}), 400
+
+        backup_file = request.files['backup_file']
+
+        if backup_file.filename == '':
+            return jsonify({"error": "No file selected"}), 400
+
+        if not backup_file.filename.endswith('.db'):
+            return jsonify({"error": "Invalid file type. Must be .db file"}), 400
+
+        # Save uploaded file temporarily
+        temp_path = os.path.join(tempfile.gettempdir(), f'restore_{datetime.now().strftime("%Y%m%d%H%M%S")}.db')
+        backup_file.save(temp_path)
+
+        # Validate backup file structure
+        import sqlite3
+        try:
+            conn = sqlite3.connect(temp_path)
+            cursor = conn.cursor()
+
+            # Check if it has expected tables
+            cursor.execute("SELECT name FROM sqlite_master WHERE type='table';")
+            tables = [row[0] for row in cursor.fetchall()]
+
+            required_tables = ['user', 'scan_result', 'audit_log', 'cloud_credential']
+            missing_tables = [t for t in required_tables if t not in tables]
+
+            conn.close()
+
+            if missing_tables:
+                os.remove(temp_path)
+                return jsonify({"error": f"Invalid backup file. Missing tables: {', '.join(missing_tables)}"}), 400
+        except Exception as e:
+            os.remove(temp_path)
+            return jsonify({"error": f"Invalid database file: {str(e)}"}), 400
+
+        # Create backup of current database before restore
+        current_db_path = app.config['SQLALCHEMY_DATABASE_URI'].replace('sqlite:///', '')
+        current_backup = f'{current_db_path}.before_restore.{datetime.now().strftime("%Y%m%d%H%M%S")}'
+
+        # Close all connections
+        db.session.close()
+
+        # Backup current database
+        shutil.copy2(current_db_path, current_backup)
+
+        # Restore from uploaded backup
+        shutil.copy2(temp_path, current_db_path)
+
+        # Clean up temp file
+        os.remove(temp_path)
+
+        log_audit("Database Restored", details=f"Admin: {current_user.username}, Backup: {current_backup}", user=current_user)
+
+        return jsonify({
+            "message": "Database restored successfully. Please restart the application.",
+            "backup_location": current_backup
+        }), 200
+    except Exception as e:
+        logging.error(f"Database restore failed: {e}")
+        return jsonify({"error": f"Restore failed: {str(e)}"}), 500
+
+@app.route('/api/v1/view-license', methods=['POST'])
+@login_required
+@admin_required
+@check_2fa
+def view_full_license():
+    """View full license key with password verification"""
+    try:
+        # Get request data
+        data = request.get_json()
+        if not data:
+            logging.error("License view: No JSON data received")
+            return jsonify({"error": "Invalid request data"}), 400
+
+        password = data.get('password')
+
+        if not password:
+            logging.error("License view: No password provided")
+            return jsonify({"error": "Password required"}), 400
+
+        # Verify password using User model's check_password method (uses Flask-Bcrypt)
+        if not current_user.password_hash:
+            logging.error(f"User {current_user.username} has no password_hash")
+            log_audit("Failed License View Attempt", details=f"No password hash - IP: {request.remote_addr}", user=current_user)
+            return jsonify({"error": "Account password not configured properly"}), 500
+
+        # Use the User model's check_password method which uses the correct bcrypt library
+        if not current_user.check_password(password):
+            logging.warning(f"Invalid password attempt for license view by {current_user.username}")
+            log_audit("Failed License View Attempt", details=f"Invalid password - IP: {request.remote_addr}", user=current_user)
+            return jsonify({"error": "Invalid password"}), 401
+
+        # Get license key
+        license_key = current_user.license_key or "No license key configured"
+
+        logging.info(f"License key viewed successfully by {current_user.username}")
+        log_audit("License Key Viewed", details=f"Admin: {current_user.username}", user=current_user)
+
+        return jsonify({"license_key": license_key}), 200
+    except Exception as e:
+        logging.error(f"License view failed: {e}", exc_info=True)
+        return jsonify({"error": f"Failed to retrieve license: {str(e)}"}), 500
+
 # NEW: Crypto Health Check Route
 @app.route('/api/v1/crypto/health')
 @login_required
@@ -5743,11 +6148,113 @@ def crypto_health_check():
     """Admin endpoint to check crypto manager health."""
     if not crypto_manager:
         return jsonify({"status": "error", "message": "Crypto manager not initialized"}), 500
-    
+
     health_status = crypto_manager.health_check()
     http_status = 200 if health_status.get("status") == "healthy" else 500
-    
+
     return jsonify(health_status), http_status
+
+# NEW: Update Checker API Routes
+@app.route('/api/v1/updates/check', methods=['GET'])
+@login_required
+def check_for_updates():
+    """Check for available updates from GitHub releases"""
+    try:
+        force = request.args.get('force', 'false').lower() == 'true'
+
+        # Get update manager
+        update_mgr = get_update_manager(USER_DATA_DIR)
+
+        # Check for updates
+        update_info = update_mgr.check_for_updates(force=force)
+
+        return jsonify(update_info), 200
+    except Exception as e:
+        logging.error(f"Error checking for updates: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/v1/updates/current-version', methods=['GET'])
+def get_current_version():
+    """Get current application version"""
+    try:
+        return jsonify({
+            "version": version.__version__,
+            "release_date": version.__release_date__,
+            "build_number": version.__build_number__,
+            "release_name": version.RELEASE_NAME
+        }), 200
+    except Exception as e:
+        logging.error(f"Error getting version: {e}")
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/v1/updates/download', methods=['POST'])
+@login_required
+@admin_required
+@check_2fa
+def download_update():
+    """Download update installer from GitHub"""
+    try:
+        data = request.get_json()
+        download_url = data.get('download_url')
+        asset_name = data.get('asset_name')
+
+        if not download_url or not asset_name:
+            return jsonify({"error": "Missing download_url or asset_name"}), 400
+
+        # Get update manager
+        update_mgr = get_update_manager(USER_DATA_DIR)
+
+        # Download update
+        success, result = update_mgr.download_update(download_url, asset_name)
+
+        if success:
+            log_audit("Update Downloaded", details=f"Asset: {asset_name}", user=current_user)
+            return jsonify({"success": True, "file_path": result}), 200
+        else:
+            return jsonify({"success": False, "error": result}), 500
+
+    except Exception as e:
+        logging.error(f"Error downloading update: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
+
+@app.route('/api/v1/updates/install', methods=['POST'])
+@login_required
+@admin_required
+@check_2fa
+def install_update():
+    """Install downloaded update"""
+    try:
+        data = request.get_json()
+        installer_path = data.get('installer_path')
+        create_backup = data.get('create_backup', True)
+
+        if not installer_path:
+            return jsonify({"error": "Missing installer_path"}), 400
+
+        # Get update manager
+        update_mgr = get_update_manager(USER_DATA_DIR)
+
+        # Create backup if requested
+        if create_backup:
+            backup_success, backup_result = update_mgr.backup_database()
+            if not backup_success:
+                return jsonify({
+                    "error": f"Failed to backup database: {backup_result}"
+                }), 500
+            logging.info(f"Database backed up to: {backup_result}")
+
+        # Install update
+        success, message = update_mgr.install_update(installer_path)
+
+        if success:
+            log_audit("Update Installed", details=f"Installer: {installer_path}", user=current_user)
+            return jsonify({"success": True, "message": message}), 200
+        else:
+            return jsonify({"success": False, "error": message}), 500
+
+    except Exception as e:
+        logging.error(f"Error installing update: {e}", exc_info=True)
+        return jsonify({"error": str(e)}), 500
 
 # NEW: Comprehensive Application Health Check API
 @app.route('/api/v1/health/check')
@@ -7085,8 +7592,8 @@ def restart_app():
         return "<h1>Relaunching... You can close this window.</h1>"
     return "Restart is only available for the executable version."
 
-@app.route('/shutdown', methods=['POST'])
-def shutdown():
+@app.route('/api/shutdown-server', methods=['POST'])
+def shutdown_server():
     """Shuts down the Waitress server."""
     os._exit(0)
     return 'Server shutting down...'
@@ -7143,12 +7650,20 @@ def check_guest_session():
         return jsonify({"status": "error"}), 500
 
 def run_main_app():
-    # Initialize enhanced demo logging for interview
-    init_demo_logging()
+    # Print clean startup message
+    print("\n" + "="*80)
+    print("  AEGIS CLOUD SECURITY SCANNER - Version 0.9.0")
+    print("  Multi-Cloud Security Assessment Platform")
+    print("="*80)
+    print("  Status: ACTIVE")
+    print("  Access URL: http://localhost:5000")
+    print("="*80 + "\n")
+
+    # Auto-open browser on every startup for better UX
+    threading.Timer(1.5, lambda: webbrowser.open("http://127.0.0.1:5000/")).start()
 
     first_run_flag = os.path.join(USER_DATA_DIR, '.first_run')
     if not os.path.exists(first_run_flag):
-        threading.Timer(1.5, lambda: webbrowser.open("http://127.0.0.1:5000/")).start()
         with open(first_run_flag, 'w') as f:
             f.write('done')
 
@@ -7562,6 +8077,10 @@ def get_security_settings():
         elif not isinstance(session_timeout, (int, float)):
             session_timeout = 3600  # Default to 1 hour
 
+        # Get user 2FA statistics
+        total_users = User.query.count()
+        users_with_2fa = User.query.filter_by(is_2fa_enabled=True).filter(User.otp_secret.isnot(None)).count()
+
         settings = {
             'max_login_attempts': app.config.get('MAX_LOGIN_ATTEMPTS', 5),
             'session_timeout': session_timeout,
@@ -7570,7 +8089,10 @@ def get_security_settings():
             'ssl_enabled': request.is_secure,
             'csrf_protection': app.config.get('WTF_CSRF_ENABLED', True),
             'secure_cookies': app.config.get('SESSION_COOKIE_SECURE', False),
-            'httponly_cookies': app.config.get('SESSION_COOKIE_HTTPONLY', True)
+            'httponly_cookies': app.config.get('SESSION_COOKIE_HTTPONLY', True),
+            'users_with_2fa': users_with_2fa,
+            'total_users': total_users,
+            'password_expiry_days': 90
         }
 
         return jsonify({
@@ -7672,7 +8194,7 @@ def get_active_sessions():
                 'email': user.email,
                 'last_login': user.last_login_date.isoformat() if user.last_login_date else None,
                 'is_admin': user.is_admin,
-                'is_2fa_enabled': user.is_2fa_enabled,
+                'is_2fa_enabled': user.has_valid_2fa,
                 'failed_login_attempts': user.failed_login_attempts,
                 'is_locked': user.is_locked
             }
@@ -8726,24 +9248,28 @@ def health_check():
     try:
         # Check database connectivity
         db.session.execute(db.text('SELECT 1'))
-        
-        # Check scheduler status
-        scheduler_status = 'running' if scheduler.running else 'stopped'
-        
-        # Check secrets manager
+
+        # Check scheduler status (safely)
+        try:
+            scheduler_status = 'running' if scheduler and scheduler.running else 'stopped'
+        except:
+            scheduler_status = 'unknown'
+
+        # Check secrets manager from app.config
+        secrets_manager = app.config.get('SECRETS_MANAGER')
         secrets_status = 'healthy' if secrets_manager else 'not_configured'
-        
+
         return jsonify({
             'status': 'healthy',
             'timestamp': datetime.now(timezone.utc).isoformat(),
-            'version': '1.0.0',
+            'version': '0.9.1',
             'services': {
                 'database': 'healthy',
                 'scheduler': scheduler_status,
                 'secrets_manager': secrets_status
             }
         }), 200
-        
+
     except Exception as e:
         logging.error(f"Health check failed: {e}")
         return jsonify({
@@ -8759,7 +9285,7 @@ def detailed_health_check():
         health_status = {
             'status': 'healthy',
             'timestamp': datetime.now(timezone.utc).isoformat(),
-            'version': '1.0.0',
+            'version': '0.9.1',
             'uptime_seconds': (datetime.now() - app.config.get('START_TIME', datetime.now())).total_seconds(),
             'services': {},
             'metrics': {}
@@ -8798,6 +9324,7 @@ def detailed_health_check():
         
         # Secrets manager health
         try:
+            secrets_manager = app.config.get('SECRETS_MANAGER')
             secrets_test = secrets_manager.get_secret('SECRET_KEY') if secrets_manager else None
             health_status['services']['secrets_manager'] = {
                 'status': 'healthy' if secrets_test else 'unhealthy',
@@ -9324,10 +9851,665 @@ def toggle_automation_rule(rule_id):
         logging.error(f"Error toggling automation rule: {e}")
         return jsonify({'success': False, 'error': str(e)}), 500
 
-# DEBUG: Simple test route at the end to see if routing works at all
-@app.route('/debug-test', methods=['POST'])
-def debug_test():
-    return jsonify({'debug': True, 'message': 'Debug route works'})
+# ===== CREDENTIALS API =====
+@app.route('/api/credentials', methods=['GET'])
+@login_required
+@check_verified
+@check_2fa
+def get_credentials():
+    """Get all cloud credentials for the current user."""
+    try:
+        credentials = CloudCredential.query.filter_by(user_id=current_user.id).all()
+        creds_data = []
+        for cred in credentials:
+            creds_data.append({
+                'id': cred.id,
+                'name': cred.profile_name,
+                'provider': cred.provider
+            })
+        return jsonify({'success': True, 'credentials': creds_data})
+    except Exception as e:
+        logging.error(f"Error fetching credentials: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===== ENTERPRISE ALERTS API =====
+@app.route('/api/v1/enterprise/alerts', methods=['GET'])
+@login_required
+@check_verified
+@check_2fa
+def get_enterprise_alerts():
+    """Get enterprise security alerts for the current user."""
+    try:
+        # Get recent scan results for the user
+        recent_scans = ScanResult.query.filter_by(user_id=current_user.id).order_by(ScanResult.timestamp.desc()).limit(5).all()
+
+        alerts = []
+        for scan in recent_scans:
+            # Parse findings to generate alerts
+            if scan.findings:
+                try:
+                    findings = json.loads(scan.findings)
+
+                    # Count critical findings
+                    critical_count = 0
+                    high_count = 0
+
+                    for category, items in findings.items():
+                        if isinstance(items, list):
+                            for item in items:
+                                severity = item.get('severity', 'low').lower()
+                                if severity == 'critical':
+                                    critical_count += 1
+                                elif severity == 'high':
+                                    high_count += 1
+
+                    # Create alert for critical findings
+                    if critical_count > 0:
+                        alerts.append({
+                            'severity': 'critical',
+                            'title': f'{critical_count} Critical Security Issues Detected',
+                            'message': f'Scan from {scan.timestamp.strftime("%Y-%m-%d %H:%M")} found {critical_count} critical issues requiring immediate attention.',
+                            'timestamp': scan.timestamp.isoformat(),
+                            'scan_id': scan.id
+                        })
+
+                    # Create alert for high severity findings
+                    if high_count > 0:
+                        alerts.append({
+                            'severity': 'high',
+                            'title': f'{high_count} High Severity Issues Found',
+                            'message': f'Recent scan identified {high_count} high severity security issues.',
+                            'timestamp': scan.timestamp.isoformat(),
+                            'scan_id': scan.id
+                        })
+
+                except json.JSONDecodeError:
+                    pass
+
+        # Limit to 10 most recent alerts
+        alerts = alerts[:10]
+
+        return jsonify({
+            'success': True,
+            'alerts': alerts,
+            'total': len(alerts)
+        })
+
+    except Exception as e:
+        logging.error(f"Error fetching enterprise alerts: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===== AUTOMATION HELPER FUNCTIONS =====
+
+def run_background_scan(task_id):
+    """Execute a background scan task."""
+    with app.app_context():
+        try:
+            task = BackgroundScanTask.query.get(task_id)
+            if not task or not task.is_active:
+                return
+
+            # Get user and credential
+            user = User.query.get(task.user_id)
+            credential = CloudCredential.query.get(task.credential_id)
+
+            if not user or not credential:
+                logging.error(f"Background scan {task_id}: User or credential not found")
+                return
+
+            # Perform the scan
+            from scanners.aws.aws_scanner import AWSScanner
+            from scanners.gcp.gcp_scanner import GCPScanner
+            from scanners.azure.azure_scanner import AzureScanner
+
+            findings = []
+            if task.provider == 'aws':
+                scanner = AWSScanner(credential.access_key_id, credential.secret_access_key)
+                findings = scanner.run_full_scan()
+            elif task.provider == 'gcp':
+                scanner = GCPScanner(credential.service_account_json)
+                findings = scanner.run_full_scan()
+            elif task.provider == 'azure':
+                scanner = AzureScanner(credential.client_id, credential.client_secret, credential.tenant_id)
+                findings = scanner.run_full_scan()
+
+            # Update task
+            task.last_run = datetime.now(timezone.utc)
+            task.next_run = datetime.now(timezone.utc) + timedelta(minutes=task.interval_minutes)
+            db.session.commit()
+
+            # Send email if configured
+            if task.send_email:
+                if not task.email_on_findings_only or len(findings) > 0:
+                    send_scan_email(user.email, task.name, findings, task.provider)
+
+        except Exception as e:
+            logging.error(f"Error running background scan {task_id}: {e}")
+
+def run_test_background_scan(task_id, user_id):
+    """Run a test background scan and send confirmation email."""
+    with app.app_context():
+        try:
+            task = BackgroundScanTask.query.get(task_id)
+            user = User.query.get(user_id)
+
+            if not task or not user:
+                return
+
+            # Send test confirmation email
+            send_test_email(
+                user.email,
+                'Background Scan Test',
+                f"""
+                <h2>✅ Background Scan Test Successful!</h2>
+                <p><strong>Task Name:</strong> {task.name}</p>
+                <p><strong>Provider:</strong> {task.provider.upper()}</p>
+                <p><strong>Interval:</strong> Every {task.interval_minutes} minutes</p>
+                <p><strong>Status:</strong> ✅ Working correctly</p>
+                <hr>
+                <p>Your background scan automation is properly configured and functioning.</p>
+                <p><small>Test executed at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</small></p>
+                """
+            )
+
+        except Exception as e:
+            logging.error(f"Error in test background scan: {e}")
+
+def run_test_scheduled_scan(task_id, user_id):
+    """Run a test scheduled scan and send confirmation email."""
+    with app.app_context():
+        try:
+            task = ScheduledScanTask.query.get(task_id)
+            user = User.query.get(user_id)
+
+            if not task or not user:
+                return
+
+            schedule_info = f"{task.schedule_type.capitalize()}"
+            if task.schedule_type == 'weekly':
+                schedule_info += f" on {task.schedule_day}"
+            elif task.schedule_type == 'monthly':
+                schedule_info += f" on day {task.schedule_day}"
+            schedule_info += f" at {task.schedule_time}"
+
+            # Send test confirmation email
+            send_test_email(
+                user.email,
+                'Scheduled Scan Test',
+                f"""
+                <h2>✅ Scheduled Scan Test Successful!</h2>
+                <p><strong>Task Name:</strong> {task.name}</p>
+                <p><strong>Provider:</strong> {task.provider.upper()}</p>
+                <p><strong>Schedule:</strong> {schedule_info}</p>
+                <p><strong>Status:</strong> ✅ Working correctly</p>
+                <hr>
+                <p>Your scheduled scan automation is properly configured and functioning.</p>
+                <p><small>Test executed at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</small></p>
+                """
+            )
+
+        except Exception as e:
+            logging.error(f"Error in test scheduled scan: {e}")
+
+def run_test_automation_rule(rule_id, user_id):
+    """Test an automation rule and send confirmation email."""
+    with app.app_context():
+        try:
+            rule = AutomationRule.query.get(rule_id)
+            user = User.query.get(user_id)
+
+            if not rule or not user:
+                return
+
+            # Send test confirmation email
+            send_test_email(
+                user.email,
+                'Automation Rule Test',
+                f"""
+                <h2>✅ Automation Rule Test Successful!</h2>
+                <p><strong>Rule Name:</strong> {rule.name}</p>
+                <p><strong>Type:</strong> {rule.rule_type.capitalize()}</p>
+                <p><strong>Description:</strong> {rule.description or 'No description'}</p>
+                <p><strong>Status:</strong> ✅ Working correctly</p>
+                <hr>
+                <p>Your automation rule is properly configured and functioning.</p>
+                <p><small>Test executed at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</small></p>
+                """
+            )
+
+        except Exception as e:
+            logging.error(f"Error in test automation rule: {e}")
+
+def send_test_email(to_email, subject, html_content):
+    """Send a test email notification."""
+    try:
+        msg = Message(
+            subject=f'[AEGIS TEST] {subject}',
+            sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@aegisscanner.com'),
+            recipients=[to_email]
+        )
+        msg.html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; text-align: center;">
+                <h1 style="color: white; margin: 0;">Aegis Cloud Scanner</h1>
+            </div>
+            <div style="padding: 30px; background-color: #f9f9f9;">
+                {html_content}
+            </div>
+            <div style="background-color: #333; color: white; padding: 15px; text-align: center; font-size: 12px;">
+                <p>Aegis Cloud Security Scanner | Automated Testing</p>
+            </div>
+        </body>
+        </html>
+        """
+        mail.send(msg)
+        logging.info(f"Test email sent to {to_email}")
+    except Exception as e:
+        logging.error(f"Failed to send test email: {e}")
+
+def send_scan_email(to_email, scan_name, findings, provider):
+    """Send scan results via email."""
+    try:
+        critical_count = sum(1 for f in findings if f.get('severity') == 'CRITICAL')
+        high_count = sum(1 for f in findings if f.get('severity') == 'HIGH')
+
+        msg = Message(
+            subject=f'[AEGIS] Scan Complete: {scan_name}',
+            sender=current_app.config.get('MAIL_DEFAULT_SENDER', 'noreply@aegisscanner.com'),
+            recipients=[to_email]
+        )
+        msg.html = f"""
+        <html>
+        <body style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <div style="background: linear-gradient(135deg, #667eea 0%, #764ba2 100%); padding: 20px; text-align: center;">
+                <h1 style="color: white; margin: 0;">Scan Results</h1>
+            </div>
+            <div style="padding: 30px; background-color: #f9f9f9;">
+                <h2>{scan_name}</h2>
+                <p><strong>Provider:</strong> {provider.upper()}</p>
+                <p><strong>Total Findings:</strong> {len(findings)}</p>
+                <p><strong>Critical:</strong> {critical_count} | <strong>High:</strong> {high_count}</p>
+                <hr>
+                <p>Log in to your Aegis dashboard to view detailed findings and remediation steps.</p>
+                <p><small>Scan completed at {datetime.now(timezone.utc).strftime('%Y-%m-%d %H:%M:%S UTC')}</small></p>
+            </div>
+            <div style="background-color: #333; color: white; padding: 15px; text-align: center; font-size: 12px;">
+                <p>Aegis Cloud Security Scanner</p>
+            </div>
+        </body>
+        </html>
+        """
+        mail.send(msg)
+    except Exception as e:
+        logging.error(f"Failed to send scan email: {e}")
+
+def schedule_cron_scan(task):
+    """Schedule a cron-based scan task."""
+    hour, minute = map(int, task.schedule_time.split(':'))
+
+    if task.schedule_type == 'daily':
+        job = scheduler.add_job(
+            func=run_scheduled_scan,
+            trigger='cron',
+            hour=hour,
+            minute=minute,
+            args=[task.id],
+            id=f'sched_scan_{task.id}'
+        )
+    elif task.schedule_type == 'weekly':
+        day_map = {'monday': 0, 'tuesday': 1, 'wednesday': 2, 'thursday': 3,
+                   'friday': 4, 'saturday': 5, 'sunday': 6}
+        job = scheduler.add_job(
+            func=run_scheduled_scan,
+            trigger='cron',
+            day_of_week=day_map[task.schedule_day.lower()],
+            hour=hour,
+            minute=minute,
+            args=[task.id],
+            id=f'sched_scan_{task.id}'
+        )
+    elif task.schedule_type == 'monthly':
+        job = scheduler.add_job(
+            func=run_scheduled_scan,
+            trigger='cron',
+            day=int(task.schedule_day),
+            hour=hour,
+            minute=minute,
+            args=[task.id],
+            id=f'sched_scan_{task.id}'
+        )
+
+    return job
+
+def run_scheduled_scan(task_id):
+    """Execute a scheduled scan task."""
+    with app.app_context():
+        try:
+            task = ScheduledScanTask.query.get(task_id)
+            if not task or not task.is_active:
+                return
+
+            # Get user and credential
+            user = User.query.get(task.user_id)
+            credential = CloudCredential.query.get(task.credential_id)
+
+            if not user or not credential:
+                logging.error(f"Scheduled scan {task_id}: User or credential not found")
+                return
+
+            # Perform the scan (same logic as background scan)
+            from scanners.aws.aws_scanner import AWSScanner
+            from scanners.gcp.gcp_scanner import GCPScanner
+            from scanners.azure.azure_scanner import AzureScanner
+
+            findings = []
+            if task.provider == 'aws':
+                scanner = AWSScanner(credential.access_key_id, credential.secret_access_key)
+                findings = scanner.run_full_scan()
+            elif task.provider == 'gcp':
+                scanner = GCPScanner(credential.service_account_json)
+                findings = scanner.run_full_scan()
+            elif task.provider == 'azure':
+                scanner = AzureScanner(credential.client_id, credential.client_secret, credential.tenant_id)
+                findings = scanner.run_full_scan()
+
+            # Update task
+            task.last_run = datetime.now(timezone.utc)
+            job = scheduler.get_job(task.job_id)
+            task.next_run = job.next_run_time if job else None
+            db.session.commit()
+
+            # Send email if configured
+            if task.send_email:
+                send_scan_email(user.email, task.name, findings, task.provider)
+
+        except Exception as e:
+            logging.error(f"Error running scheduled scan {task_id}: {e}")
+
+# ===== BACKGROUND SCAN TASKS =====
+@app.route('/api/v1/automation/background-scans', methods=['GET'])
+@login_required
+@check_verified
+@check_2fa
+def get_background_scans():
+    """Get all background scan tasks for the current user."""
+    try:
+        tasks = BackgroundScanTask.query.filter_by(user_id=current_user.id).all()
+        tasks_data = []
+        for task in tasks:
+            tasks_data.append({
+                'id': task.id,
+                'name': task.name,
+                'provider': task.provider,
+                'interval_minutes': task.interval_minutes,
+                'is_active': task.is_active,
+                'send_email': task.send_email,
+                'last_run': task.last_run.isoformat() if task.last_run else None,
+                'next_run': task.next_run.isoformat() if task.next_run else None
+            })
+        return jsonify({'success': True, 'tasks': tasks_data})
+    except Exception as e:
+        logging.error(f"Error fetching background scans: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/v1/automation/background-scans', methods=['POST'])
+@login_required
+@check_verified
+@check_2fa
+def create_background_scan():
+    """Create a new background scan task."""
+    try:
+        data = request.get_json()
+
+        new_task = BackgroundScanTask(
+            user_id=current_user.id,
+            name=data['name'],
+            provider=data['provider'],
+            credential_id=data['credential_id'],
+            interval_minutes=data.get('interval_minutes', 60),
+            send_email=data.get('send_email', True),
+            email_on_findings_only=data.get('email_on_findings_only', False)
+        )
+
+        db.session.add(new_task)
+        db.session.commit()
+
+        # Schedule the job
+        next_run = datetime.now(timezone.utc) + timedelta(minutes=new_task.interval_minutes)
+        job = scheduler.add_job(
+            func=run_background_scan,
+            trigger='interval',
+            minutes=new_task.interval_minutes,
+            args=[new_task.id],
+            id=f'bg_scan_{new_task.id}',
+            next_run_time=next_run
+        )
+
+        new_task.job_id = job.id
+        new_task.next_run = next_run
+        db.session.commit()
+
+        log_audit(action="create_background_scan", details=f"Created background scan: {new_task.name}", user=current_user)
+
+        return jsonify({'success': True, 'message': 'Background scan created', 'task_id': new_task.id})
+    except Exception as e:
+        logging.error(f"Error creating background scan: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/v1/automation/background-scans/<int:task_id>/test', methods=['POST'])
+@login_required
+@check_verified
+@check_2fa
+def test_background_scan(task_id):
+    """Test a background scan - runs in 10 seconds and sends confirmation email."""
+    try:
+        task = BackgroundScanTask.query.filter_by(id=task_id, user_id=current_user.id).first()
+        if not task:
+            return jsonify({'success': False, 'error': 'Task not found'}), 404
+
+        # Schedule test scan to run in 10 seconds
+        test_run_time = datetime.now(timezone.utc) + timedelta(seconds=10)
+        scheduler.add_job(
+            func=run_test_background_scan,
+            trigger='date',
+            run_date=test_run_time,
+            args=[task.id, current_user.id],
+            id=f'test_bg_scan_{task.id}_{int(time.time())}'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Test scan scheduled for 10 seconds from now. Check your email!',
+            'test_run_time': test_run_time.isoformat()
+        })
+    except Exception as e:
+        logging.error(f"Error testing background scan: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/v1/automation/background-scans/<int:task_id>', methods=['DELETE'])
+@login_required
+@check_verified
+@check_2fa
+def delete_background_scan(task_id):
+    """Delete a background scan task."""
+    try:
+        task = BackgroundScanTask.query.filter_by(id=task_id, user_id=current_user.id).first()
+        if not task:
+            return jsonify({'success': False, 'error': 'Task not found'}), 404
+
+        # Remove from scheduler if job exists
+        if task.job_id:
+            try:
+                scheduler.remove_job(task.job_id)
+            except:
+                pass  # Job might not exist
+
+        # Delete from database
+        db.session.delete(task)
+        db.session.commit()
+
+        log_audit(action="delete_background_scan", details=f"Deleted background scan: {task.name}", user=current_user)
+
+        return jsonify({'success': True, 'message': 'Background scan deleted successfully'})
+    except Exception as e:
+        logging.error(f"Error deleting background scan: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# ===== SCHEDULED SCAN TASKS =====
+@app.route('/api/v1/automation/scheduled-scans', methods=['GET'])
+@login_required
+@check_verified
+@check_2fa
+def get_scheduled_scans():
+    """Get all scheduled scan tasks for the current user."""
+    try:
+        tasks = ScheduledScanTask.query.filter_by(user_id=current_user.id).all()
+        tasks_data = []
+        for task in tasks:
+            tasks_data.append({
+                'id': task.id,
+                'name': task.name,
+                'provider': task.provider,
+                'schedule_type': task.schedule_type,
+                'schedule_time': task.schedule_time,
+                'schedule_day': task.schedule_day,
+                'is_active': task.is_active,
+                'send_email': task.send_email,
+                'last_run': task.last_run.isoformat() if task.last_run else None,
+                'next_run': task.next_run.isoformat() if task.next_run else None
+            })
+        return jsonify({'success': True, 'tasks': tasks_data})
+    except Exception as e:
+        logging.error(f"Error fetching scheduled scans: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/v1/automation/scheduled-scans', methods=['POST'])
+@login_required
+@check_verified
+@check_2fa
+def create_scheduled_scan():
+    """Create a new scheduled scan task."""
+    try:
+        data = request.get_json()
+
+        new_task = ScheduledScanTask(
+            user_id=current_user.id,
+            name=data['name'],
+            provider=data['provider'],
+            credential_id=data['credential_id'],
+            schedule_type=data['schedule_type'],
+            schedule_time=data['schedule_time'],
+            schedule_day=data.get('schedule_day'),
+            send_email=data.get('send_email', True)
+        )
+
+        db.session.add(new_task)
+        db.session.commit()
+
+        # Schedule the job based on schedule_type
+        job = schedule_cron_scan(new_task)
+        new_task.job_id = job.id
+        new_task.next_run = job.next_run_time
+        db.session.commit()
+
+        log_audit(action="create_scheduled_scan", details=f"Created scheduled scan: {new_task.name}", user=current_user)
+
+        return jsonify({'success': True, 'message': 'Scheduled scan created', 'task_id': new_task.id})
+    except Exception as e:
+        logging.error(f"Error creating scheduled scan: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/v1/automation/scheduled-scans/<int:task_id>/test', methods=['POST'])
+@login_required
+@check_verified
+@check_2fa
+def test_scheduled_scan(task_id):
+    """Test a scheduled scan - runs in 10 seconds and sends confirmation email."""
+    try:
+        task = ScheduledScanTask.query.filter_by(id=task_id, user_id=current_user.id).first()
+        if not task:
+            return jsonify({'success': False, 'error': 'Task not found'}), 404
+
+        # Schedule test scan to run in 10 seconds
+        test_run_time = datetime.now(timezone.utc) + timedelta(seconds=10)
+        scheduler.add_job(
+            func=run_test_scheduled_scan,
+            trigger='date',
+            run_date=test_run_time,
+            args=[task.id, current_user.id],
+            id=f'test_sched_scan_{task.id}_{int(time.time())}'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Test scan scheduled for 10 seconds from now. Check your email!',
+            'test_run_time': test_run_time.isoformat()
+        })
+    except Exception as e:
+        logging.error(f"Error testing scheduled scan: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/v1/automation/scheduled-scans/<int:task_id>', methods=['DELETE'])
+@login_required
+@check_verified
+@check_2fa
+def delete_scheduled_scan(task_id):
+    """Delete a scheduled scan task."""
+    try:
+        task = ScheduledScanTask.query.filter_by(id=task_id, user_id=current_user.id).first()
+        if not task:
+            return jsonify({'success': False, 'error': 'Task not found'}), 404
+
+        # Remove from scheduler if job exists
+        if task.job_id:
+            try:
+                scheduler.remove_job(task.job_id)
+            except:
+                pass  # Job might not exist
+
+        # Delete from database
+        db.session.delete(task)
+        db.session.commit()
+
+        log_audit(action="delete_scheduled_scan", details=f"Deleted scheduled scan: {task.name}", user=current_user)
+
+        return jsonify({'success': True, 'message': 'Scheduled scan deleted successfully'})
+    except Exception as e:
+        logging.error(f"Error deleting scheduled scan: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+@app.route('/api/v1/automation/rules/<int:rule_id>/test', methods=['POST'])
+@login_required
+@check_verified
+@check_2fa
+def test_automation_rule(rule_id):
+    """Test an automation rule - sends confirmation email."""
+    try:
+        rule = AutomationRule.query.filter_by(id=rule_id, user_id=current_user.id).first()
+        if not rule:
+            return jsonify({'success': False, 'error': 'Rule not found'}), 404
+
+        # Send test email for rule
+        test_run_time = datetime.now(timezone.utc) + timedelta(seconds=10)
+        scheduler.add_job(
+            func=run_test_automation_rule,
+            trigger='date',
+            run_date=test_run_time,
+            args=[rule.id, current_user.id],
+            id=f'test_rule_{rule.id}_{int(time.time())}'
+        )
+
+        return jsonify({
+            'success': True,
+            'message': 'Test scheduled for 10 seconds from now. Check your email!',
+            'test_run_time': test_run_time.isoformat()
+        })
+    except Exception as e:
+        logging.error(f"Error testing automation rule: {e}")
+        return jsonify({'success': False, 'error': str(e)}), 500
+
+# Production mode - debug routes removed
 
 if __name__ == '__main__':
     if not os.path.exists(ENV_FILE_PATH):

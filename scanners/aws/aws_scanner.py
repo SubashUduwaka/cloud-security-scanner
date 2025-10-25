@@ -226,6 +226,84 @@ def scan_iam_overly_permissive_roles(iam_client):
     logging.debug(f"Finished scan: IAM Overly Permissive Roles. Found {len(results)} results.")
     return results
 
+def scan_iam_overly_permissive_users(iam_client):
+    """
+    Scan IAM users for overly permissive policies.
+    Checks both attached managed policies and inline policies for admin-like permissions.
+    """
+    logging.debug("Starting scan: IAM Overly Permissive Users")
+    results = []
+    try:
+        paginator = iam_client.get_paginator('list_users')
+        users = [user for page in paginator.paginate() for user in page.get('Users', [])]
+        logging.debug(f"Found {len(users)} IAM users to analyze for overly permissive access.")
+
+        for user in users:
+            user_name = user['UserName']
+            is_admin = False
+            admin_policies = []
+
+            try:
+                # Check attached managed policies
+                attached = iam_client.list_attached_user_policies(UserName=user_name).get('AttachedPolicies', [])
+                for p in attached:
+                    policy_name = p.get('PolicyName')
+                    policy_arn = p.get('PolicyArn', '')
+
+                    # Check for Administrator Access or PowerUser Access
+                    if policy_name in ['AdministratorAccess', 'PowerUserAccess'] or policy_arn.endswith(':AdministratorAccess') or policy_arn.endswith(':PowerUserAccess'):
+                        is_admin = True
+                        admin_policies.append(policy_name)
+                        break
+
+                # Check inline policies if not already flagged as admin
+                if not is_admin:
+                    inline = iam_client.list_user_policies(UserName=user_name).get('PolicyNames', [])
+                    for pname in inline:
+                        doc = iam_client.get_user_policy(UserName=user_name, PolicyName=pname)['PolicyDocument']
+                        doc_str = json.dumps(doc)
+
+                        # Check for wildcard permissions
+                        if ('"Action": "*"' in doc_str and '"Resource": "*"' in doc_str) or \
+                           ('"Action":"*"' in doc_str and '"Resource":"*"' in doc_str) or \
+                           ("'Action': '*'" in doc_str and "'Resource': '*'" in doc_str):
+                            is_admin = True
+                            admin_policies.append(f"Inline:{pname}")
+                            break
+
+            except ClientError as e:
+                results.append(handle_aws_exception(user_name, "Inspect User Policies", e))
+                continue
+            except Exception as e:
+                results.append(handle_aws_exception(user_name, "Inspect User Policies", e))
+                continue
+
+            # Create result based on findings
+            if is_admin:
+                policy_list = ", ".join(admin_policies) if admin_policies else "detected"
+                result = {
+                    "service": "IAM",
+                    "resource": user_name,
+                    "status": "CRITICAL",
+                    "issue": f"User has overly permissive (Administrator-like) access via: {policy_list}",
+                    "remediation": "Review user permissions and apply principle of least privilege. Avoid granting full AdministratorAccess to IAM users. Consider using roles instead.",
+                    "doc_url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/best-practices.html#grant-least-privilege"
+                }
+                results.append(result)
+            else:
+                results.append({
+                    "service": "IAM",
+                    "resource": user_name,
+                    "status": "OK",
+                    "issue": "User has appropriately scoped permissions."
+                })
+
+    except Exception as e:
+        results.append(handle_aws_exception("N/A", "ListUsers", e))
+
+    logging.debug(f"Finished scan: IAM Overly Permissive Users. Found {len(results)} results.")
+    return results
+
 def scan_iam_users_and_keys(iam_client):
     logging.debug("Starting scan: IAM User Activity (Credential Report)")
     results = []
@@ -302,6 +380,214 @@ def scan_iam_users(iam_client):
     logging.debug(f"Finished scan: IAM Access Key Age. Found {len(results)} results.")
     return results
 
+def scan_iam_user_mfa(iam_client):
+    """Check if IAM users have MFA enabled"""
+    logging.debug("Starting scan: IAM User MFA")
+    results = []
+    try:
+        paginator = iam_client.get_paginator('list_users')
+        users = [user for page in paginator.paginate() for user in page.get('Users', [])]
+        logging.debug(f"Found {len(users)} IAM users to check for MFA.")
+
+        for user in users:
+            username = user['UserName']
+            try:
+                mfa_devices = iam_client.list_mfa_devices(UserName=username).get('MFADevices', [])
+                if mfa_devices:
+                    results.append({"service": "IAM", "resource": username, "status": "OK", "issue": "MFA is enabled for this user."})
+                else:
+                    results.append({"service": "IAM", "resource": username, "status": "CRITICAL", "issue": "MFA is not enabled for this user.", "remediation": "Enable MFA for all IAM users with console access to add an extra layer of security.", "doc_url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_mfa.html"})
+            except ClientError as e:
+                results.append(handle_aws_exception(username, "ListMFADevices", e))
+            except Exception as e:
+                results.append(handle_aws_exception(username, "ListMFADevices", e))
+    except Exception as e:
+        results.append(handle_aws_exception("N/A", "ListUsers", e))
+
+    logging.debug(f"Finished scan: IAM User MFA. Found {len(results)} results.")
+    return results
+
+def scan_iam_unused_credentials(iam_client):
+    """Detect IAM users with credentials that haven't been used in 90+ days"""
+    logging.debug("Starting scan: IAM Unused Credentials")
+    results = []
+    try:
+        try:
+            iam_client.generate_credential_report()
+        except ClientError as e:
+            if e.response.get('Error', {}).get('Code') != 'ReportInProgress':
+                raise e
+
+        report = iam_client.get_credential_report()
+        content = report.get('Content')
+        if content:
+            csvfile = io.StringIO(content.decode('utf-8'))
+            reader = csv.DictReader(csvfile)
+
+            for row in reader:
+                user = row.get('user')
+                if user == '<root_account>':
+                    continue
+
+                password_enabled = row.get('password_enabled') == 'true'
+                password_last_used = row.get('password_last_used')
+
+                ak1_active = row.get('access_key_1_active') == 'true'
+                ak1_last_used = row.get('access_key_1_last_used_date')
+
+                ak2_active = row.get('access_key_2_active') == 'true'
+                ak2_last_used = row.get('access_key_2_last_used_date')
+
+                unused_items = []
+
+                # Check password
+                if password_enabled:
+                    if password_last_used in ['N/A', 'no_information']:
+                        unused_items.append("password (never used)")
+                    else:
+                        try:
+                            dt = datetime.datetime.fromisoformat(password_last_used.replace('Z', '+00:00'))
+                            age_days = (datetime.datetime.now(datetime.timezone.utc) - dt).days
+                            if age_days > 90:
+                                unused_items.append(f"password (unused for {age_days} days)")
+                        except:
+                            pass
+
+                # Check access key 1
+                if ak1_active:
+                    if ak1_last_used in ['N/A', 'no_information']:
+                        unused_items.append("access key 1 (never used)")
+                    else:
+                        try:
+                            dt = datetime.datetime.fromisoformat(ak1_last_used.replace('Z', '+00:00'))
+                            age_days = (datetime.datetime.now(datetime.timezone.utc) - dt).days
+                            if age_days > 90:
+                                unused_items.append(f"access key 1 (unused for {age_days} days)")
+                        except:
+                            pass
+
+                # Check access key 2
+                if ak2_active:
+                    if ak2_last_used in ['N/A', 'no_information']:
+                        unused_items.append("access key 2 (never used)")
+                    else:
+                        try:
+                            dt = datetime.datetime.fromisoformat(ak2_last_used.replace('Z', '+00:00'))
+                            age_days = (datetime.datetime.now(datetime.timezone.utc) - dt).days
+                            if age_days > 90:
+                                unused_items.append(f"access key 2 (unused for {age_days} days)")
+                        except:
+                            pass
+
+                if unused_items:
+                    results.append({
+                        "service": "IAM",
+                        "resource": user,
+                        "status": "WARNING",
+                        "issue": f"User has unused credentials: {', '.join(unused_items)}",
+                        "remediation": "Deactivate or remove unused credentials to reduce security risk.",
+                        "doc_url": "https://docs.aws.amazon.com/IAM/latest/UserGuide/id_credentials_finding-unused.html"
+                    })
+                else:
+                    results.append({"service": "IAM", "resource": user, "status": "OK", "issue": "All credentials are actively used."})
+
+    except Exception as e:
+        results.append(handle_aws_exception("IAM Users", "GetCredentialReport", e))
+
+    logging.debug(f"Finished scan: IAM Unused Credentials. Found {len(results)} results.")
+    return results
+
+def scan_s3_encryption(s3_client):
+    """Check if S3 buckets have encryption enabled"""
+    logging.debug("Starting scan: S3 Bucket Encryption")
+    results = []
+    try:
+        response = s3_client.list_buckets()
+        buckets = response.get('Buckets', [])
+        logging.debug(f"Found {len(buckets)} S3 buckets to check for encryption.")
+
+        for bucket in buckets:
+            bucket_name = bucket['Name']
+            try:
+                encryption = s3_client.get_bucket_encryption(Bucket=bucket_name)
+                results.append({"service": "S3", "resource": bucket_name, "status": "OK", "issue": "Bucket encryption is enabled."})
+            except ClientError as e:
+                if e.response.get('Error', {}).get('Code') == 'ServerSideEncryptionConfigurationNotFoundError':
+                    results.append({
+                        "service": "S3",
+                        "resource": bucket_name,
+                        "status": "CRITICAL",
+                        "issue": "Bucket does not have default encryption enabled.",
+                        "remediation": "Enable default encryption (SSE-S3 or SSE-KMS) for your S3 bucket.",
+                        "doc_url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/default-bucket-encryption.html"
+                    })
+                else:
+                    results.append(handle_aws_exception(bucket_name, "GetBucketEncryption", e))
+            except Exception as e:
+                results.append(handle_aws_exception(bucket_name, "GetBucketEncryption", e))
+
+    except Exception as e:
+        results.append(handle_aws_exception("N/A", "ListBuckets", e))
+
+    logging.debug(f"Finished scan: S3 Bucket Encryption. Found {len(results)} results.")
+    return results
+
+def scan_s3_bucket_policies(s3_client):
+    """Check S3 bucket policies for overly permissive access"""
+    logging.debug("Starting scan: S3 Bucket Policies")
+    results = []
+    try:
+        response = s3_client.list_buckets()
+        buckets = response.get('Buckets', [])
+        logging.debug(f"Found {len(buckets)} S3 buckets to check policies.")
+
+        for bucket in buckets:
+            bucket_name = bucket['Name']
+            try:
+                policy_response = s3_client.get_bucket_policy(Bucket=bucket_name)
+                policy = json.loads(policy_response.get('Policy', '{}'))
+
+                issues = []
+                for statement in policy.get('Statement', []):
+                    principal = statement.get('Principal', {})
+                    action = statement.get('Action', [])
+                    effect = statement.get('Effect', '')
+
+                    if effect == 'Allow':
+                        # Check for public access
+                        if principal == '*' or principal == {"AWS": "*"}:
+                            issues.append("allows public access")
+
+                        # Check for wildcard actions
+                        if action == '*' or 's3:*' in action:
+                            issues.append("allows all S3 actions")
+
+                if issues:
+                    results.append({
+                        "service": "S3",
+                        "resource": bucket_name,
+                        "status": "CRITICAL",
+                        "issue": f"Bucket policy {', '.join(issues)}.",
+                        "remediation": "Review and restrict bucket policy to follow principle of least privilege.",
+                        "doc_url": "https://docs.aws.amazon.com/AmazonS3/latest/userguide/bucket-policies.html"
+                    })
+                else:
+                    results.append({"service": "S3", "resource": bucket_name, "status": "OK", "issue": "Bucket policy appears appropriately scoped."})
+
+            except ClientError as e:
+                if e.response.get('Error', {}).get('Code') == 'NoSuchBucketPolicy':
+                    results.append({"service": "S3", "resource": bucket_name, "status": "OK", "issue": "No bucket policy configured."})
+                else:
+                    results.append(handle_aws_exception(bucket_name, "GetBucketPolicy", e))
+            except Exception as e:
+                results.append(handle_aws_exception(bucket_name, "GetBucketPolicy", e))
+
+    except Exception as e:
+        results.append(handle_aws_exception("N/A", "ListBuckets", e))
+
+    logging.debug(f"Finished scan: S3 Bucket Policies. Found {len(results)} results.")
+    return results
+
 def scan_rds_encryption_and_public(rds_client, region):
     logging.debug(f"[{region}] Starting scan: RDS Encryption & Public Access")
     results = []
@@ -349,6 +635,329 @@ def scan_rds_backup_retention(rds_client, region):
     except Exception as e:
         results.append(handle_aws_exception(f"[{region}] N/A", "DescribeDBInstances", e))
     logging.debug(f"[{region}] Finished scan: RDS Backup Retention. Found {len(results)} results.")
+    return results
+
+def scan_rds_multi_az(rds_client, region):
+    """Check if RDS instances have Multi-AZ enabled for high availability"""
+    logging.debug(f"[{region}] Starting scan: RDS Multi-AZ")
+    results = []
+    try:
+        response = rds_client.describe_db_instances()
+        db_instances = response.get('DBInstances', [])
+        logging.debug(f"[{region}] Found {len(db_instances)} RDS instances to check Multi-AZ status.")
+
+        if not db_instances:
+            results.append({"service": "RDS", "resource": f"[{region}] N/A", "status": "OK", "issue": "No RDS instances found."})
+        for db in db_instances:
+            identifier = db.get('DBInstanceIdentifier')
+            multi_az = db.get('MultiAZ', False)
+
+            if multi_az:
+                results.append({"service": "RDS", "resource": f"[{region}] {identifier}", "status": "OK", "issue": "Multi-AZ is enabled."})
+            else:
+                results.append({
+                    "service": "RDS",
+                    "resource": f"[{region}] {identifier}",
+                    "status": "WARNING",
+                    "issue": "Multi-AZ is not enabled.",
+                    "remediation": "Enable Multi-AZ for production databases to ensure high availability and automatic failover.",
+                    "doc_url": "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/Concepts.MultiAZ.html"
+                })
+    except Exception as e:
+        results.append(handle_aws_exception(f"[{region}] N/A", "DescribeDBInstances", e))
+
+    logging.debug(f"[{region}] Finished scan: RDS Multi-AZ. Found {len(results)} results.")
+    return results
+
+def scan_rds_deletion_protection(rds_client, region):
+    """Check if RDS instances have deletion protection enabled"""
+    logging.debug(f"[{region}] Starting scan: RDS Deletion Protection")
+    results = []
+    try:
+        response = rds_client.describe_db_instances()
+        db_instances = response.get('DBInstances', [])
+        logging.debug(f"[{region}] Found {len(db_instances)} RDS instances to check deletion protection.")
+
+        if not db_instances:
+            results.append({"service": "RDS", "resource": f"[{region}] N/A", "status": "OK", "issue": "No RDS instances found."})
+        for db in db_instances:
+            identifier = db.get('DBInstanceIdentifier')
+            deletion_protection = db.get('DeletionProtection', False)
+
+            if deletion_protection:
+                results.append({"service": "RDS", "resource": f"[{region}] {identifier}", "status": "OK", "issue": "Deletion protection is enabled."})
+            else:
+                results.append({
+                    "service": "RDS",
+                    "resource": f"[{region}] {identifier}",
+                    "status": "WARNING",
+                    "issue": "Deletion protection is not enabled.",
+                    "remediation": "Enable deletion protection for production databases to prevent accidental deletion.",
+                    "doc_url": "https://docs.aws.amazon.com/AmazonRDS/latest/UserGuide/USER_DeleteInstance.html"
+                })
+    except Exception as e:
+        results.append(handle_aws_exception(f"[{region}] N/A", "DescribeDBInstances", e))
+
+    logging.debug(f"[{region}] Finished scan: RDS Deletion Protection. Found {len(results)} results.")
+    return results
+
+def scan_ec2_imdsv2(ec2_client, region):
+    """Check if EC2 instances enforce IMDSv2 (Instance Metadata Service v2)"""
+    logging.debug(f"[{region}] Starting scan: EC2 IMDSv2")
+    results = []
+    try:
+        instances_response = ec2_client.describe_instances(
+            Filters=[{'Name': 'instance-state-name', 'Values': ['running', 'stopped']}]
+        )
+
+        instances = [inst for res in instances_response.get('Reservations', []) for inst in res.get('Instances', [])]
+        logging.debug(f"[{region}] Found {len(instances)} EC2 instances to check IMDSv2 enforcement.")
+
+        if not instances:
+            results.append({"service": "EC2", "resource": f"[{region}] N/A", "status": "OK", "issue": "No EC2 instances found."})
+
+        for inst in instances:
+            instance_id = inst.get('InstanceId')
+            metadata_options = inst.get('MetadataOptions', {})
+            http_tokens = metadata_options.get('HttpTokens', 'optional')
+
+            if http_tokens == 'required':
+                results.append({"service": "EC2", "resource": f"[{region}] {instance_id}", "status": "OK", "issue": "IMDSv2 is enforced (required)."})
+            else:
+                results.append({
+                    "service": "EC2",
+                    "resource": f"[{region}] {instance_id}",
+                    "status": "WARNING",
+                    "issue": "IMDSv2 is not enforced (optional or disabled).",
+                    "remediation": "Require IMDSv2 to protect against SSRF attacks and improve security.",
+                    "doc_url": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/configuring-instance-metadata-service.html"
+                })
+    except Exception as e:
+        results.append(handle_aws_exception(f"[{region}] N/A", "DescribeInstances", e))
+
+    logging.debug(f"[{region}] Finished scan: EC2 IMDSv2. Found {len(results)} results.")
+    return results
+
+def scan_ec2_instances_without_iam_roles(ec2_client, region):
+    """Check if EC2 instances have IAM roles attached"""
+    logging.debug(f"[{region}] Starting scan: EC2 Instances without IAM Roles")
+    results = []
+    try:
+        instances_response = ec2_client.describe_instances(
+            Filters=[{'Name': 'instance-state-name', 'Values': ['running']}]
+        )
+
+        instances = [inst for res in instances_response.get('Reservations', []) for inst in res.get('Instances', [])]
+        logging.debug(f"[{region}] Found {len(instances)} running EC2 instances to check for IAM roles.")
+
+        if not instances:
+            results.append({"service": "EC2", "resource": f"[{region}] N/A", "status": "OK", "issue": "No running EC2 instances found."})
+
+        for inst in instances:
+            instance_id = inst.get('InstanceId')
+            iam_instance_profile = inst.get('IamInstanceProfile')
+
+            if iam_instance_profile:
+                results.append({"service": "EC2", "resource": f"[{region}] {instance_id}", "status": "OK", "issue": "Instance has an IAM role attached."})
+            else:
+                results.append({
+                    "service": "EC2",
+                    "resource": f"[{region}] {instance_id}",
+                    "status": "WARNING",
+                    "issue": "Instance does not have an IAM role attached.",
+                    "remediation": "Attach an IAM role to the instance instead of using hardcoded credentials.",
+                    "doc_url": "https://docs.aws.amazon.com/AWSEC2/latest/UserGuide/iam-roles-for-amazon-ec2.html"
+                })
+    except Exception as e:
+        results.append(handle_aws_exception(f"[{region}] N/A", "DescribeInstances", e))
+
+    logging.debug(f"[{region}] Finished scan: EC2 Instances without IAM Roles. Found {len(results)} results.")
+    return results
+
+def scan_vpc_flow_logs(ec2_client, region):
+    """Check if VPCs have flow logs enabled"""
+    logging.debug(f"[{region}] Starting scan: VPC Flow Logs")
+    results = []
+    try:
+        vpcs_response = ec2_client.describe_vpcs()
+        vpcs = vpcs_response.get('Vpcs', [])
+        logging.debug(f"[{region}] Found {len(vpcs)} VPCs to check for flow logs.")
+
+        if not vpcs:
+            results.append({"service": "VPC", "resource": f"[{region}] N/A", "status": "OK", "issue": "No VPCs found."})
+
+        for vpc in vpcs:
+            vpc_id = vpc.get('VpcId')
+
+            # Check for flow logs
+            flow_logs_response = ec2_client.describe_flow_logs(
+                Filters=[{'Name': 'resource-id', 'Values': [vpc_id]}]
+            )
+            flow_logs = flow_logs_response.get('FlowLogs', [])
+
+            if flow_logs:
+                results.append({"service": "VPC", "resource": f"[{region}] {vpc_id}", "status": "OK", "issue": "VPC Flow Logs are enabled."})
+            else:
+                results.append({
+                    "service": "VPC",
+                    "resource": f"[{region}] {vpc_id}",
+                    "status": "CRITICAL",
+                    "issue": "VPC Flow Logs are not enabled.",
+                    "remediation": "Enable VPC Flow Logs to capture IP traffic information for network monitoring and security analysis.",
+                    "doc_url": "https://docs.aws.amazon.com/vpc/latest/userguide/flow-logs.html"
+                })
+    except Exception as e:
+        results.append(handle_aws_exception(f"[{region}] N/A", "DescribeVpcs", e))
+
+    logging.debug(f"[{region}] Finished scan: VPC Flow Logs. Found {len(results)} results.")
+    return results
+
+def scan_kms_key_rotation(kms_client, region):
+    """Check if KMS keys have automatic key rotation enabled"""
+    logging.debug(f"[{region}] Starting scan: KMS Key Rotation")
+    results = []
+    try:
+        keys_response = kms_client.list_keys()
+        keys = keys_response.get('Keys', [])
+        logging.debug(f"[{region}] Found {len(keys)} KMS keys to check rotation status.")
+
+        if not keys:
+            results.append({"service": "KMS", "resource": f"[{region}] N/A", "status": "OK", "issue": "No KMS keys found."})
+
+        for key in keys:
+            key_id = key.get('KeyId')
+
+            try:
+                # Get key metadata to check if it's customer-managed
+                key_metadata = kms_client.describe_key(KeyId=key_id).get('KeyMetadata', {})
+                key_manager = key_metadata.get('KeyManager')
+
+                # Only check customer-managed keys
+                if key_manager == 'CUSTOMER':
+                    rotation_status = kms_client.get_key_rotation_status(KeyId=key_id)
+                    key_rotation_enabled = rotation_status.get('KeyRotationEnabled', False)
+
+                    if key_rotation_enabled:
+                        results.append({"service": "KMS", "resource": f"[{region}] {key_id}", "status": "OK", "issue": "Automatic key rotation is enabled."})
+                    else:
+                        results.append({
+                            "service": "KMS",
+                            "resource": f"[{region}] {key_id}",
+                            "status": "WARNING",
+                            "issue": "Automatic key rotation is not enabled.",
+                            "remediation": "Enable automatic key rotation for customer-managed KMS keys to enhance security.",
+                            "doc_url": "https://docs.aws.amazon.com/kms/latest/developerguide/rotate-keys.html"
+                        })
+            except ClientError as e:
+                if e.response.get('Error', {}).get('Code') not in ['AccessDeniedException', 'UnsupportedOperationException']:
+                    results.append(handle_aws_exception(f"[{region}] {key_id}", "GetKeyRotationStatus", e))
+            except Exception as e:
+                results.append(handle_aws_exception(f"[{region}] {key_id}", "GetKeyRotationStatus", e))
+
+    except Exception as e:
+        results.append(handle_aws_exception(f"[{region}] N/A", "ListKeys", e))
+
+    logging.debug(f"[{region}] Finished scan: KMS Key Rotation. Found {len(results)} results.")
+    return results
+
+def scan_elb_access_logs(elb_client, elbv2_client, region):
+    """Check if ELB/ALB have access logs enabled"""
+    logging.debug(f"[{region}] Starting scan: ELB/ALB Access Logs")
+    results = []
+
+    # Check Classic Load Balancers
+    try:
+        classic_lbs = elb_client.describe_load_balancers().get('LoadBalancerDescriptions', [])
+        logging.debug(f"[{region}] Found {len(classic_lbs)} Classic Load Balancers.")
+
+        for lb in classic_lbs:
+            lb_name = lb.get('LoadBalancerName')
+            attributes = elb_client.describe_load_balancer_attributes(LoadBalancerName=lb_name)
+            access_log = attributes.get('LoadBalancerAttributes', {}).get('AccessLog', {})
+            enabled = access_log.get('Enabled', False)
+
+            if enabled:
+                results.append({"service": "ELB", "resource": f"[{region}] {lb_name}", "status": "OK", "issue": "Access logs are enabled."})
+            else:
+                results.append({
+                    "service": "ELB",
+                    "resource": f"[{region}] {lb_name}",
+                    "status": "WARNING",
+                    "issue": "Access logs are not enabled.",
+                    "remediation": "Enable access logs for load balancers to capture detailed information about requests.",
+                    "doc_url": "https://docs.aws.amazon.com/elasticloadbalancing/latest/classic/access-log-collection.html"
+                })
+    except Exception as e:
+        results.append(handle_aws_exception(f"[{region}] Classic ELB", "DescribeLoadBalancers", e))
+
+    # Check Application/Network Load Balancers
+    try:
+        albs = elbv2_client.describe_load_balancers().get('LoadBalancers', [])
+        logging.debug(f"[{region}] Found {len(albs)} ALB/NLB Load Balancers.")
+
+        for lb in albs:
+            lb_arn = lb.get('LoadBalancerArn')
+            lb_name = lb.get('LoadBalancerName')
+
+            attributes = elbv2_client.describe_load_balancer_attributes(LoadBalancerArn=lb_arn)
+            access_log_enabled = False
+
+            for attr in attributes.get('Attributes', []):
+                if attr.get('Key') == 'access_logs.s3.enabled':
+                    access_log_enabled = attr.get('Value') == 'true'
+                    break
+
+            if access_log_enabled:
+                results.append({"service": "ALB/NLB", "resource": f"[{region}] {lb_name}", "status": "OK", "issue": "Access logs are enabled."})
+            else:
+                results.append({
+                    "service": "ALB/NLB",
+                    "resource": f"[{region}] {lb_name}",
+                    "status": "WARNING",
+                    "issue": "Access logs are not enabled.",
+                    "remediation": "Enable access logs for load balancers to capture detailed information about requests.",
+                    "doc_url": "https://docs.aws.amazon.com/elasticloadbalancing/latest/application/load-balancer-access-logs.html"
+                })
+    except Exception as e:
+        results.append(handle_aws_exception(f"[{region}] ALB/NLB", "DescribeLoadBalancers", e))
+
+    logging.debug(f"[{region}] Finished scan: ELB/ALB Access Logs. Found {len(results)} results.")
+    return results
+
+def scan_cloudwatch_log_retention(logs_client, region):
+    """Check CloudWatch log groups for retention settings"""
+    logging.debug(f"[{region}] Starting scan: CloudWatch Log Retention")
+    results = []
+    try:
+        log_groups = []
+        paginator = logs_client.get_paginator('describe_log_groups')
+        for page in paginator.paginate():
+            log_groups.extend(page.get('logGroups', []))
+
+        logging.debug(f"[{region}] Found {len(log_groups)} CloudWatch log groups.")
+
+        if not log_groups:
+            results.append({"service": "CloudWatch Logs", "resource": f"[{region}] N/A", "status": "OK", "issue": "No log groups found."})
+
+        for log_group in log_groups:
+            log_group_name = log_group.get('logGroupName')
+            retention_in_days = log_group.get('retentionInDays')
+
+            if retention_in_days:
+                results.append({"service": "CloudWatch Logs", "resource": f"[{region}] {log_group_name}", "status": "OK", "issue": f"Retention period is set to {retention_in_days} days."})
+            else:
+                results.append({
+                    "service": "CloudWatch Logs",
+                    "resource": f"[{region}] {log_group_name}",
+                    "status": "WARNING",
+                    "issue": "No retention period set (logs retained indefinitely).",
+                    "remediation": "Set a retention period for CloudWatch log groups to control storage costs.",
+                    "doc_url": "https://docs.aws.amazon.com/AmazonCloudWatch/latest/logs/Working-with-log-groups-and-streams.html"
+                })
+    except Exception as e:
+        results.append(handle_aws_exception(f"[{region}] N/A", "DescribeLogGroups", e))
+
+    logging.debug(f"[{region}] Finished scan: CloudWatch Log Retention. Found {len(results)} results.")
     return results
 
 def scan_ebs_encryption(ec2_client, region):
@@ -737,10 +1346,15 @@ def get_all_scan_functions(credentials, regions=None):
         ("IAM Root MFA", partial(scan_iam_root_mfa, iam_client)),
         ("IAM Password Policy", partial(scan_iam_password_policy, iam_client)),
         ("IAM Overly Permissive Roles", partial(scan_iam_overly_permissive_roles, iam_client)),
+        ("IAM Overly Permissive Users", partial(scan_iam_overly_permissive_users, iam_client)),
+        ("IAM User MFA Enforcement", partial(scan_iam_user_mfa, iam_client)),
+        ("IAM Unused Credentials", partial(scan_iam_unused_credentials, iam_client)),
         ("IAM User Activity (Credential Report)", partial(scan_iam_users_and_keys, iam_client)),
         ("IAM Access Key Age", partial(scan_iam_users, iam_client)),
         ("S3 Public Buckets", partial(scan_s3_buckets, s3_client)),
         ("S3 Bucket Logging", partial(scan_s3_bucket_logging, s3_client)),
+        ("S3 Bucket Encryption", partial(scan_s3_encryption, s3_client)),
+        ("S3 Bucket Policies", partial(scan_s3_bucket_policies, s3_client)),
         ("S3 Versioning", partial(scan_s3_versioning, s3_client)),
         ("S3 Lifecycle Policies", partial(scan_s3_lifecycle, s3_client)),
     ])
@@ -822,6 +1436,13 @@ def get_all_scan_functions(credentials, regions=None):
                 (f"[{region}] VPC Security Groups", partial(scan_security_groups, ec2_client, region)),
                 (f"[{region}] RDS Public & Encrypted", partial(scan_rds_encryption_and_public, rds_client, region)),
                 (f"[{region}] RDS Backup Retention", partial(scan_rds_backup_retention, rds_client, region)),
+                (f"[{region}] RDS Multi-AZ", partial(scan_rds_multi_az, rds_client, region)),
+                (f"[{region}] RDS Deletion Protection", partial(scan_rds_deletion_protection, rds_client, region)),
+                (f"[{region}] EC2 IMDSv2 Enforcement", partial(scan_ec2_imdsv2, ec2_client, region)),
+                (f"[{region}] EC2 Instances without IAM Roles", partial(scan_ec2_instances_without_iam_roles, ec2_client, region)),
+                (f"[{region}] VPC Flow Logs", partial(scan_vpc_flow_logs, ec2_client, region)),
+                (f"[{region}] CloudWatch Log Retention", partial(scan_cloudwatch_log_retention, logs_client, region)),
+                (f"[{region}] ELB/ALB Access Logs", partial(scan_elb_access_logs, elb_client, elbv2_client, region)),
                 (f"[{region}] Lambda Permissions", partial(scan_lambda_permissions, iam_client, lambda_client, region)),
                 (f"[{region}] ECS Task Permissions", partial(scan_ecs_task_role_admin, iam_client, ecs_client, region)),
                 (f"[{region}] GuardDuty Status", partial(scan_guardduty_status, guardduty_client, region)),

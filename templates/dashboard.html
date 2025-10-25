@@ -25,45 +25,39 @@
         </div>
     </div>
 </div>
-{% endif %}
 
 <!-- FORCE CLEAN SLATE FOR GUEST USERS -->
 <script>
 // Immediately clear any cached data and force fresh dashboard
 window.addEventListener('DOMContentLoaded', function() {
-    // Check if we're in guest mode by looking for the guest banner
-    const guestBanner = document.querySelector('.guest-mode-banner');
-    if (guestBanner || window.location.href.includes('guest') || document.body.textContent.includes('Guest Mode Active')) {
-        console.log('Guest mode detected - clearing all cached data');
-        localStorage.clear();
-        sessionStorage.clear();
-        
-        // Clear any existing chart instances
-        if (window.myCharts) {
-            Object.values(window.myCharts).forEach(chart => {
-                try { chart.destroy(); } catch(e) { console.log('Chart cleanup:', e); }
-            });
-            window.myCharts = {};
-        }
-        
-        // Force all dashboard metrics to show zero
-        document.addEventListener('DOMContentLoaded', function() {
-            setTimeout(() => {
-                const metrics = document.querySelectorAll('.metric-value');
-                metrics.forEach(metric => {
-                    if (metric.textContent !== '0' && metric.textContent !== '0%') {
-                        metric.textContent = metric.id === 'healthScore' ? '100%' : '0';
-                    }
-                });
-                
-                // Clear any data tables
-                const tables = document.querySelectorAll('tbody');
-                tables.forEach(tbody => tbody.innerHTML = '<tr><td colspan="100%" style="text-align: center; color: #666;">No data available - add credentials to start scanning</td></tr>');
-            }, 100);
+    console.log('Guest mode detected - clearing all cached data');
+    localStorage.clear();
+    sessionStorage.clear();
+
+    // Clear any existing chart instances
+    if (window.myCharts) {
+        Object.values(window.myCharts).forEach(chart => {
+            try { chart.destroy(); } catch(e) { console.log('Chart cleanup:', e); }
         });
+        window.myCharts = {};
     }
+
+    // Force all dashboard metrics to show zero
+    setTimeout(() => {
+        const metrics = document.querySelectorAll('.metric-value');
+        metrics.forEach(metric => {
+            if (metric.textContent !== '0' && metric.textContent !== '0%') {
+                metric.textContent = metric.id === 'healthScore' ? '100%' : '0';
+            }
+        });
+
+        // Clear any data tables
+        const tables = document.querySelectorAll('tbody');
+        tables.forEach(tbody => tbody.innerHTML = '<tr><td colspan="100%" style="text-align: center; color: #666;">No data available - add credentials to start scanning</td></tr>');
+    }, 100);
 });
 </script>
+{% endif %}
 
 {% if not credentials %}
 <div style="background: #f39c12; color: white; padding: 20px; text-align: center; margin: 20px; border-radius: 10px; box-shadow: 0 4px 8px rgba(0,0,0,0.2);" id="credentialsPrompt">
@@ -996,45 +990,29 @@ window.addEventListener('DOMContentLoaded', function() {
                             </div>
                             <div class="card-info">
                                 <h3>Background Scanning</h3>
-                                <span class="card-status running">Running</span>
+                                <span class="card-status" id="bg-scan-status">0 Active</span>
                             </div>
                             <div class="card-actions">
-                                <button class="action-btn" onclick="loadBackgroundScanStatus()">
+                                <button class="action-btn" onclick="loadBackgroundScans()" title="Refresh">
                                     <i class="fas fa-refresh"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="card-content">
-                            <div class="scan-metrics">
-                                <div class="metric">
-                                    <span class="metric-value">1h 30m</span>
-                                    <span class="metric-label">Next Scan</span>
-                                </div>
-                                <div class="metric">
-                                    <span class="metric-value">156</span>
-                                    <span class="metric-label">Total Runs</span>
-                                </div>
-                                <div class="metric">
-                                    <span class="metric-value">99.2%</span>
-                                    <span class="metric-label">Success Rate</span>
-                                </div>
-                            </div>
-                            <div class="scan-progress">
-                                <div class="progress-info">
-                                    <span>AWS Production Environment</span>
-                                    <span class="progress-time">Every 2 hours</span>
-                                </div>
-                                <div class="progress-bar-modern">
-                                    <div class="progress-fill animated-progress" style="width: 75%"></div>
+                            <div id="background-scans-list" class="tasks-list">
+                                <div class="empty-state">
+                                    <i class="fas fa-sync-alt fa-2x"></i>
+                                    <p>No background scans configured</p>
+                                    <small>Click "Create Task" to set up automated scanning</small>
                                 </div>
                             </div>
                         </div>
                         <div class="card-footer">
-                            <button class="btn-modern primary" onclick="showBackgroundScanModal()">
-                                <i class="fas fa-play"></i> Configure
+                            <button class="btn-modern primary" onclick="showCreateBackgroundScanModal()">
+                                <i class="fas fa-plus"></i> Create Task
                             </button>
-                            <button class="btn-modern secondary" onclick="showBackgroundScanSettingsModal()">
-                                <i class="fas fa-cog"></i> Settings
+                            <button class="btn-modern secondary" onclick="viewAllBackgroundScans()">
+                                <i class="fas fa-list"></i> Manage
                             </button>
                         </div>
                     </div>
@@ -1046,51 +1024,29 @@ window.addEventListener('DOMContentLoaded', function() {
                             </div>
                             <div class="card-info">
                                 <h3>Scheduled Scans</h3>
-                                <span class="card-status active">2 Scheduled</span>
+                                <span class="card-status" id="scheduled-scan-status">0 Scheduled</span>
                             </div>
                             <div class="card-actions">
-                                <button class="action-btn" onclick="schedulingManager.loadScheduledJobs()">
+                                <button class="action-btn" onclick="loadScheduledScans()" title="Refresh">
                                     <i class="fas fa-sync-alt"></i>
                                 </button>
                             </div>
                         </div>
                         <div class="card-content">
-                            <div class="scheduled-jobs-preview">
-                                <div class="job-item">
-                                    <div class="job-info">
-                                        <div class="job-name">Weekly Security Scan</div>
-                                        <div class="job-schedule">Every Monday at 02:00 AM</div>
-                                    </div>
-                                    <div class="job-status scheduled">
-                                        <i class="fas fa-clock"></i>
-                                    </div>
-                                </div>
-                                <div class="job-item">
-                                    <div class="job-info">
-                                        <div class="job-name">Monthly Compliance Check</div>
-                                        <div class="job-schedule">1st of every month</div>
-                                    </div>
-                                    <div class="job-status scheduled">
-                                        <i class="fas fa-clock"></i>
-                                    </div>
-                                </div>
-                                <div class="job-item upcoming">
-                                    <div class="job-info">
-                                        <div class="job-name">Next: Weekly Security Scan</div>
-                                        <div class="job-schedule">Tomorrow at 02:00 AM</div>
-                                    </div>
-                                    <div class="job-status next">
-                                        <i class="fas fa-play-circle"></i>
-                                    </div>
+                            <div id="scheduled-scans-list" class="tasks-list">
+                                <div class="empty-state">
+                                    <i class="fas fa-calendar-alt fa-2x"></i>
+                                    <p>No scheduled scans configured</p>
+                                    <small>Click "New Schedule" to set up recurring scans</small>
                                 </div>
                             </div>
                         </div>
                         <div class="card-footer">
-                            <button class="btn-modern primary" onclick="showScheduleScanModal()">
+                            <button class="btn-modern primary" onclick="showCreateScheduledScanModal()">
                                 <i class="fas fa-calendar-plus"></i> New Schedule
                             </button>
-                            <button class="btn-modern secondary" onclick="showAdvancedScheduleModal()">
-                                <i class="fas fa-stopwatch"></i> Advanced
+                            <button class="btn-modern secondary" onclick="viewAllScheduledScans()">
+                                <i class="fas fa-list"></i> Manage
                             </button>
                         </div>
                     </div>
@@ -1617,7 +1573,6 @@ window.addEventListener('DOMContentLoaded', function() {
                         <div class="module-header">
                             <div class="module-icon">
                                 <i class="fas fa-shield-virus"></i>
-                                <div class="status-indicator active"></div>
                             </div>
                             <div class="module-info">
                                 <h3>Threat Intelligence</h3>
@@ -1657,7 +1612,6 @@ window.addEventListener('DOMContentLoaded', function() {
                         <div class="module-header">
                             <div class="module-icon">
                                 <i class="fas fa-network-wired"></i>
-                                <div class="status-indicator active"></div>
                             </div>
                             <div class="module-info">
                                 <h3>SIEM Integration</h3>
@@ -1691,7 +1645,6 @@ window.addEventListener('DOMContentLoaded', function() {
                         <div class="module-header">
                             <div class="module-icon">
                                 <i class="fas fa-clipboard-check"></i>
-                                <div class="status-indicator partial"></div>
                             </div>
                             <div class="module-info">
                                 <h3>Compliance Engine</h3>
@@ -1729,7 +1682,6 @@ window.addEventListener('DOMContentLoaded', function() {
                         <div class="module-header">
                             <div class="module-icon">
                                 <i class="fas fa-bug"></i>
-                                <div class="status-indicator active"></div>
                             </div>
                             <div class="module-info">
                                 <h3>Vulnerability Management</h3>
@@ -1767,7 +1719,6 @@ window.addEventListener('DOMContentLoaded', function() {
                         <div class="module-header">
                             <div class="module-icon">
                                 <i class="fas fa-exclamation-circle"></i>
-                                <div class="status-indicator warning"></div>
                             </div>
                             <div class="module-info">
                                 <h3>Incident Response</h3>
@@ -1802,7 +1753,6 @@ window.addEventListener('DOMContentLoaded', function() {
                         <div class="module-header">
                             <div class="module-icon">
                                 <i class="fas fa-chart-bar"></i>
-                                <div class="status-indicator active"></div>
                             </div>
                             <div class="module-info">
                                 <h3>Executive Reporting</h3>

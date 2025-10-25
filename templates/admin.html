@@ -64,7 +64,7 @@
             <div class="stat-card info">
                 <div class="stat-icon"><i class="fas fa-shield-alt"></i></div>
                 <div class="stat-content">
-                    <div class="stat-value">{{ users|selectattr('is_2fa_enabled')|list|length }}</div>
+                    <div class="stat-value">{{ users|selectattr('has_valid_2fa')|list|length }}</div>
                     <div class="stat-label">2FA Enabled</div>
                     <div class="stat-detail">{{ users|selectattr('is_admin')|list|length }} admins</div>
                 </div>
@@ -146,7 +146,7 @@
                             {% endif %}
                         </td>
                         <td>
-                            {% if user.is_2fa_enabled %}<i class="fas fa-shield-alt text-success" title="MFA Enabled"></i>
+                            {% if user.has_valid_2fa %}<i class="fas fa-shield-alt text-success" title="MFA Enabled"></i>
                             {% else %}<i class="fas fa-shield-alt text-muted" title="MFA Disabled"></i>
                             {% endif %}
                         </td>
@@ -357,6 +357,25 @@
                 </div>
             </div>
         </div>
+
+        <!-- License Key Display Section -->
+        <div class="license-section" style="margin-top: 30px;">
+            <h4><i class="fas fa-key"></i> License Information</h4>
+            <div class="license-key-display" style="display: flex; align-items: center; gap: 15px; padding: 15px; background: rgba(0,0,0,0.02); border-radius: 8px;">
+                <span class="partial-key" id="partialLicenseKey" style="font-family: monospace; font-size: 16px; color: #555;">
+                    {% if current_user.license_key %}
+                        {{ current_user.license_key[:8] }}-****-****-{{ current_user.license_key[-4:] if current_user.license_key|length > 12 else 'XXXX' }}
+                    {% else %}
+                        No license key configured
+                    {% endif %}
+                </span>
+                {% if current_user.license_key %}
+                <button class="button" onclick="viewFullLicense()" title="View Full License Key" style="padding: 8px 16px;">
+                    <i class="fas fa-eye"></i> View Full Key
+                </button>
+                {% endif %}
+            </div>
+        </div>
     </div>
 </div>
 
@@ -371,17 +390,23 @@
                 <button id="createBackup" class="button">
                     <i class="fas fa-download"></i> Create Backup
                 </button>
+                <button id="restoreDatabase" class="button">
+                    <i class="fas fa-upload"></i> Restore Backup
+                </button>
                 <button id="showDatabaseInfo" class="button">
                     <i class="fas fa-info-circle"></i> Database Info
                 </button>
-                <button id="optimizeDatabase" class="button" disabled>
+                <button id="optimizeDatabase" class="button">
                     <i class="fas fa-optimize"></i> Optimize Database
                 </button>
-                <button id="cleanupLogs" class="button" disabled>
+                <button id="cleanupLogs" class="button">
                     <i class="fas fa-broom"></i> Clean Old Logs
                 </button>
             </div>
-            
+
+            <!-- Hidden file input for restore -->
+            <input type="file" id="restoreFileInput" accept=".db" style="display: none;">
+
             <div id="maintenance-status" class="maintenance-status"></div>
         </div>
     </div>
@@ -1002,7 +1027,20 @@ function setupAdminEventListeners() {
     
     // Backup creation
     document.getElementById('createBackup')?.addEventListener('click', createDatabaseBackup);
-    
+
+    // Database restore
+    document.getElementById('restoreDatabase')?.addEventListener('click', function() {
+        document.getElementById('restoreFileInput').click();
+    });
+
+    document.getElementById('restoreFileInput')?.addEventListener('change', restoreDatabaseFromFile);
+
+    // Optimize database
+    document.getElementById('optimizeDatabase')?.addEventListener('click', optimizeDatabase);
+
+    // Clean old logs
+    document.getElementById('cleanupLogs')?.addEventListener('click', cleanOldLogs);
+
     // Database info
     document.getElementById('showDatabaseInfo')?.addEventListener('click', showDatabaseInfo);
     
@@ -1196,10 +1234,18 @@ async function loadSecuritySettings() {
                         <span>${settings.password_min_length || 'N/A'} characters</span>
                     </div>
                     <div class="setting-row">
-                        <label>2FA Required:</label>
+                        <label>2FA Enforcement:</label>
                         <span class="status-badge ${settings.require_2fa ? 'status-active' : 'status-inactive'}">
-                            ${settings.require_2fa ? 'Yes' : 'No'}
+                            ${settings.require_2fa ? 'Required' : 'Optional'}
                         </span>
+                    </div>
+                    <div class="setting-row">
+                        <label>Users with 2FA:</label>
+                        <span>${settings.users_with_2fa || 0} / ${settings.total_users || 0} users (${settings.total_users > 0 ? Math.round((settings.users_with_2fa / settings.total_users) * 100) : 0}%)</span>
+                    </div>
+                    <div class="setting-row">
+                        <label>Password Expiry:</label>
+                        <span>${settings.password_expiry_days || 90} days</span>
                     </div>
                     <div class="setting-row">
                         <label>SSL Enabled:</label>
@@ -1276,38 +1322,28 @@ async function loadActiveSessions() {
 async function createDatabaseBackup() {
     const button = document.getElementById('createBackup');
     const statusContainer = document.getElementById('maintenance-status');
-    
+
     button.disabled = true;
     button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Creating Backup...';
-    
+
     try {
-        const response = await fetch('/api/admin/backup/create', {
-            method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRFToken': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
-            }
-        });
-        
-        const data = await response.json();
-        
-        if (data.status === 'success') {
-            statusContainer.innerHTML = `
-                <div class="success-message">
-                    <i class="fas fa-check-circle"></i>
-                    Backup created successfully: ${data.backup_file}<br>
-                    <small>Size: ${(data.backup_size / 1024).toFixed(1)} KB | Path: ${data.backup_path}</small>
-                </div>
-            `;
-        } else {
-            statusContainer.innerHTML = `
-                <div class="error-message">
-                    <i class="fas fa-exclamation-triangle"></i>
-                    Backup failed: ${data.message}
-                    ${data.details ? '<br><small>' + data.details + '</small>' : ''}
-                </div>
-            `;
-        }
+        // Use GET request to download the backup file
+        window.location.href = '/admin/backup-database';
+
+        statusContainer.innerHTML = `
+            <div class="success-message">
+                <i class="fas fa-check-circle"></i>
+                Database backup download started...
+            </div>
+        `;
+
+        showNotification('Database backup download started', 'success');
+
+        // Re-enable button after a short delay
+        setTimeout(() => {
+            button.disabled = false;
+            button.innerHTML = '<i class="fas fa-download"></i> Create Backup';
+        }, 2000);
     } catch (error) {
         statusContainer.innerHTML = `
             <div class="error-message">
@@ -1315,9 +1351,191 @@ async function createDatabaseBackup() {
                 Error creating backup: ${error.message}
             </div>
         `;
-    } finally {
+        showNotification('Error creating backup', 'error');
         button.disabled = false;
         button.innerHTML = '<i class="fas fa-download"></i> Create Backup';
+    }
+}
+
+async function optimizeDatabase() {
+    const button = document.getElementById('optimizeDatabase');
+    const statusContainer = document.getElementById('maintenance-status');
+
+    if (!confirm('Optimize database? This may take a moment and will temporarily lock the database.')) {
+        return;
+    }
+
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Optimizing...';
+
+    try {
+        const response = await fetch('/admin/optimize-database', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            statusContainer.innerHTML = `
+                <div class="success-message">
+                    <i class="fas fa-check-circle"></i>
+                    ${data.message}
+                </div>
+            `;
+            showNotification('Database optimized successfully', 'success');
+        } else {
+            statusContainer.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${data.error}
+                </div>
+            `;
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        statusContainer.innerHTML = `
+            <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                Error: ${error.message}
+            </div>
+        `;
+        showNotification('Error optimizing database', 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-optimize"></i> Optimize Database';
+    }
+}
+
+async function cleanOldLogs() {
+    const button = document.getElementById('cleanupLogs');
+    const statusContainer = document.getElementById('maintenance-status');
+
+    if (!confirm('Clean old audit logs (older than 90 days)? This action cannot be undone.')) {
+        return;
+    }
+
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Cleaning...';
+
+    try {
+        const response = await fetch('/admin/clean-old-logs', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            }
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            statusContainer.innerHTML = `
+                <div class="success-message">
+                    <i class="fas fa-check-circle"></i>
+                    ${data.message}
+                </div>
+            `;
+            showNotification(data.message, 'success');
+        } else {
+            statusContainer.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${data.error}
+                </div>
+            `;
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        statusContainer.innerHTML = `
+            <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                Error: ${error.message}
+            </div>
+        `;
+        showNotification('Error cleaning logs', 'error');
+    } finally {
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-broom"></i> Clean Old Logs';
+    }
+}
+
+async function restoreDatabaseFromFile(event) {
+    const file = event.target.files[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.db')) {
+        showNotification('Please select a valid .db file', 'error');
+        return;
+    }
+
+    if (!confirm(`Restore database from "${file.name}"?\n\nWARNING: This will replace your current database. A backup of the current database will be created automatically.\n\nYou will need to restart the application after restore.`)) {
+        event.target.value = ''; // Reset file input
+        return;
+    }
+
+    const statusContainer = document.getElementById('maintenance-status');
+    const button = document.getElementById('restoreDatabase');
+
+    button.disabled = true;
+    button.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Restoring...';
+
+    try {
+        const formData = new FormData();
+        formData.append('backup_file', file);
+
+        // Get CSRF token
+        const csrfToken = getCsrfToken();
+        if (csrfToken) {
+            formData.append('csrf_token', csrfToken);
+        }
+
+        const response = await fetch('/admin/restore-database', {
+            method: 'POST',
+            headers: {
+                'X-CSRFToken': csrfToken
+            },
+            body: formData
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            statusContainer.innerHTML = `
+                <div class="success-message">
+                    <i class="fas fa-check-circle"></i>
+                    ${data.message}<br>
+                    <small>Current database backed up to: ${data.backup_location}</small><br>
+                    <strong style="color: #d32f2f; margin-top: 10px; display: block;">
+                        ⚠️ Please restart the application now!
+                    </strong>
+                </div>
+            `;
+            showNotification('Database restored! Please restart the application.', 'success');
+        } else {
+            statusContainer.innerHTML = `
+                <div class="error-message">
+                    <i class="fas fa-exclamation-triangle"></i>
+                    ${data.error}
+                </div>
+            `;
+            showNotification(data.error, 'error');
+        }
+    } catch (error) {
+        statusContainer.innerHTML = `
+            <div class="error-message">
+                <i class="fas fa-exclamation-triangle"></i>
+                Error: ${error.message}
+            </div>
+        `;
+        showNotification('Error restoring database', 'error');
+    } finally{
+        button.disabled = false;
+        button.innerHTML = '<i class="fas fa-upload"></i> Restore Backup';
+        event.target.value = ''; // Reset file input
     }
 }
 
@@ -1644,6 +1862,128 @@ function displayAuditLogs(logs, replaceContent = false) {
 
 function loadMoreAuditLogs() {
     loadAuditLogs();
+}
+
+// License Key Viewing Functions
+function viewFullLicense() {
+    const modal = `
+        <div class="modal" id="licenseModal" style="display: block; position: fixed; z-index: 10000; left: 0; top: 0; width: 100%; height: 100%; background-color: rgba(0,0,0,0.4);">
+            <div class="modal-content" style="background-color: #fefefe; margin: 10% auto; padding: 30px; border-radius: 12px; width: 90%; max-width: 500px; box-shadow: 0 4px 20px rgba(0,0,0,0.2);">
+                <span class="close" onclick="closeLicenseModal()" style="color: #aaa; float: right; font-size: 28px; font-weight: bold; cursor: pointer;">&times;</span>
+                <h2 style="margin-top: 0; color: #333;"><i class="fas fa-key"></i> View Full License Key</h2>
+                <p style="color: #666; margin-bottom: 20px;">Enter your password to view the full license key:</p>
+                <input type="password" id="licensePassword" class="form-control" placeholder="Password" style="width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 6px; margin-bottom: 20px; font-size: 14px;">
+                <div class="modal-buttons" style="display: flex; gap: 10px; margin-bottom: 20px;">
+                    <button class="button" onclick="revealLicense()" style="flex: 1; padding: 12px; background: linear-gradient(135deg, #00A896, #007F73); color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                        <i class="fas fa-eye"></i> View License
+                    </button>
+                    <button class="button" onclick="closeLicenseModal()" style="flex: 1; padding: 12px; background: #6c757d; color: white; border: none; border-radius: 6px; cursor: pointer; font-weight: 500;">
+                        <i class="fas fa-times"></i> Cancel
+                    </button>
+                </div>
+                <div id="fullLicenseDisplay" style="display:none; margin-top: 20px;">
+                    <p style="font-weight: 600; color: #333; margin-bottom: 10px;">Full License Key:</p>
+                    <p id="fullLicenseKey" style="font-family: 'Courier New', monospace; background: #f8f9fa; padding: 15px; border-radius: 6px; word-break: break-all; font-size: 14px; border: 1px solid #dee2e6;"></p>
+                    <p style="color: #dc3545; font-weight: 500; margin-top: 15px;">
+                        <i class="fas fa-clock"></i> This key will disappear in <span id="countdown" style="font-weight: 700;">240</span> seconds
+                    </p>
+                </div>
+            </div>
+        </div>
+    `;
+    document.body.insertAdjacentHTML('beforeend', modal);
+}
+
+function closeLicenseModal() {
+    const modal = document.getElementById('licenseModal');
+    if (modal) {
+        modal.remove();
+    }
+    if (window.licenseTimeout) {
+        clearTimeout(window.licenseTimeout);
+        clearInterval(window.licenseCountdown);
+    }
+}
+
+async function revealLicense() {
+    const password = document.getElementById('licensePassword').value;
+
+    if (!password) {
+        showNotification('Please enter your password', 'error');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/v1/view-license', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRFToken': getCsrfToken()
+            },
+            body: JSON.stringify({ password: password })
+        });
+
+        const data = await response.json();
+
+        if (response.ok) {
+            // Display the license key
+            document.getElementById('fullLicenseKey').textContent = data.license_key;
+            document.getElementById('fullLicenseDisplay').style.display = 'block';
+
+            // Hide password input and buttons
+            const modal = document.getElementById('licenseModal');
+            const buttonsDiv = modal.querySelector('.modal-buttons');
+            const passwordInput = document.getElementById('licensePassword');
+
+            if (buttonsDiv) buttonsDiv.style.display = 'none';
+            if (passwordInput) passwordInput.style.display = 'none';
+
+            // Start 4 minute (240 second) countdown
+            let timeLeft = 240;
+            const countdownEl = document.getElementById('countdown');
+
+            window.licenseCountdown = setInterval(() => {
+                timeLeft--;
+                if (countdownEl) countdownEl.textContent = timeLeft;
+                if (timeLeft <= 0) {
+                    clearInterval(window.licenseCountdown);
+                }
+            }, 1000);
+
+            // Auto-hide after 4 minutes
+            window.licenseTimeout = setTimeout(() => {
+                closeLicenseModal();
+                showNotification('License key view expired', 'info');
+            }, 240000);
+
+            showNotification('License key revealed successfully', 'success');
+        } else {
+            console.error('License view error:', data.error);
+            showNotification(data.error || 'Invalid password', 'error');
+        }
+    } catch (error) {
+        console.error('License view exception:', error);
+        showNotification('Error: ' + error.message, 'error');
+    }
+}
+
+function getCsrfToken() {
+    // Try to get CSRF token from meta tag or cookie
+    const metaToken = document.querySelector('meta[name="csrf-token"]');
+    if (metaToken) {
+        return metaToken.getAttribute('content');
+    }
+
+    // Fallback to cookie
+    const cookies = document.cookie.split(';');
+    for (let cookie of cookies) {
+        const [name, value] = cookie.trim().split('=');
+        if (name === 'csrf_token') {
+            return decodeURIComponent(value);
+        }
+    }
+
+    return '';
 }
 </script>
 

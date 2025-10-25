@@ -24,10 +24,11 @@ os.environ.setdefault('FLASK_ENV', 'production')
 
 # Configure production logging
 if not application.debug and not application.testing:
-    # Create logs directory if it doesn't exist
-    log_dir = os.path.join(os.path.dirname(__file__), 'logs')
+    # Create logs directory in user's AppData (not Program Files - read-only)
+    appdata_dir = os.path.join(os.environ.get('LOCALAPPDATA', os.path.expanduser('~')), 'AegisScanner')
+    log_dir = os.path.join(appdata_dir, 'logs')
     if not os.path.exists(log_dir):
-        os.makedirs(log_dir)
+        os.makedirs(log_dir, exist_ok=True)
 
     # Setup file logging
     file_handler = RotatingFileHandler(

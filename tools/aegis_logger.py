@@ -187,23 +187,23 @@ class LiveActivityLogger:
         print(stats_line, flush=True)
 
     def print_banner(self):
-        """Print an impressive startup banner"""
+        """Print startup banner"""
         # Use ASCII-only characters for Windows console compatibility
         banner = f"""
 {Colors.BOLD}{Colors.BLUE}================================================================================
 
-  {Colors.CYAN}AEGIS CLOUD SECURITY SCANNER - LIVE DEMONSTRATION MODE{Colors.BLUE}
+  {Colors.CYAN}AEGIS CLOUD SECURITY SCANNER{Colors.BLUE}
 
   {Colors.WHITE}Multi-Cloud Security Assessment Platform{Colors.BLUE}
   {Colors.YELLOW}* AWS Security Analysis    * Real-time Monitoring{Colors.BLUE}
   {Colors.YELLOW}* GCP Vulnerability Scan   * Compliance Reporting{Colors.BLUE}
   {Colors.YELLOW}* Azure Risk Assessment    * Automated Remediation{Colors.BLUE}
 
-  {Colors.GREEN}Status: ACTIVE  {Colors.RED}Security Level: MAXIMUM  {Colors.MAGENTA}Mode: LIVE DEMO{Colors.BLUE}
+  {Colors.GREEN}Status: ACTIVE  {Colors.YELLOW}Version: 0.9.0{Colors.BLUE}
 
 ================================================================================{Colors.END}
 
-{Colors.YELLOW}System Initialization Complete - Monitoring All Cloud Security Activities...{Colors.END}
+{Colors.GREEN}System ready - Access the application at http://localhost:5000{Colors.END}
 """
         print(banner, flush=True) 
     
@@ -274,32 +274,12 @@ def log_system_event(event, details=""):
     live_logger.log(event, 'SYSTEM', details)
 
 def log_startup():
-    """Enhanced startup sequence for impressive demo"""
+    """Clean startup sequence without delays"""
     live_logger.print_banner()
-    time.sleep(0.5)
-
     live_logger.log("Initializing Aegis Security Framework", 'SYSTEM')
-    time.sleep(0.2)
-    live_logger.log("Loading security modules", 'SECURITY', "Multi-cloud security protocols")
-    time.sleep(0.2)
-    live_logger.log("Establishing encrypted connections", 'ENCRYPTION', "AES-256 + RSA-4096")
-    time.sleep(0.2)
-    live_logger.log("Database connection established", 'DATABASE', "SQLite with encryption at rest")
-    time.sleep(0.2)
-    live_logger.log("AWS SDK initialized", 'AWS', "Boto3 with credential rotation")
-    time.sleep(0.2)
-    live_logger.log("GCP SDK initialized", 'GCP', "Cloud SDK with service account auth")
-    time.sleep(0.2)
-    live_logger.log("Azure SDK initialized", 'AZURE', "Azure Identity with managed identity")
-    time.sleep(0.2)
-    live_logger.log("Security scanners activated", 'SCAN', "200+ security checks loaded")
-    time.sleep(0.2)
-    live_logger.log("Compliance frameworks loaded", 'COMPLIANCE', "SOC2, PCI-DSS, GDPR, HIPAA")
-    time.sleep(0.2)
-    live_logger.log("Web application server started", 'NETWORK', "Flask + Gunicorn on port 5000")
-    time.sleep(0.2)
-    live_logger.log("Real-time monitoring enabled", 'SUCCESS', "All systems operational")
-
+    live_logger.log("Database connection established", 'DATABASE')
+    live_logger.log("Web application server started", 'NETWORK', "Flask on port 5000")
+    live_logger.log("System ready", 'SUCCESS', "All systems operational")
     live_logger.print_stats_header()
 
 # Demo helper functions

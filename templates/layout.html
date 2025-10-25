@@ -115,14 +115,56 @@
         </nav>
     </header>
 
+    <!-- Update Notification Banner -->
+    <div id="updateNotification" class="update-notification" style="display: none;">
+        <div class="update-content">
+            <div class="update-icon">
+                <i class="fas fa-download"></i>
+            </div>
+            <div class="update-info">
+                <strong>New Update Available!</strong>
+                <span id="updateVersion"></span>
+                <p id="updateMessage"></p>
+            </div>
+            <div class="update-actions">
+                <button class="update-button" onclick="showUpdateModal()">
+                    <i class="fas fa-info-circle"></i> View Details
+                </button>
+                <button class="update-dismiss" onclick="dismissUpdateNotification()">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
     <main>
         {% with messages = get_flashed_messages(with_categories=true) %}
             {% if messages %}
-                <div class="flash-messages-container">
-                {% for category, message in messages %}
-                    <p class="flash {{ category }}"><i class="fas fa-info-circle"></i> {{ message }}</p>
-                {% endfor %}
-                </div>
+                <script src="https://cdn.jsdelivr.net/npm/toastify-js"></script>
+                <script>
+                    {% for category, message in messages %}
+                        Toastify({
+                            text: "{{ message|safe }}",
+                            duration: 5000,
+                            gravity: "top",
+                            position: "right",
+                            style: {
+                                background: "{{ 'linear-gradient(135deg, #4CAF50, #45A049)' if category == 'success' else 'linear-gradient(135deg, #D64550, #B83B46)' if category == 'error' else 'linear-gradient(135deg, #F5A623, #e67e22)' if category == 'warning' else 'linear-gradient(135deg, #00A896, #007F73)' }}",
+                                color: "white",
+                                borderRadius: "16px",
+                                padding: "16px 24px",
+                                fontSize: "14px",
+                                fontWeight: "500",
+                                boxShadow: "0 8px 32px rgba(0, 0, 0, 0.15)",
+                                backdropFilter: "blur(10px)",
+                                border: "1px solid rgba(255, 255, 255, 0.2)"
+                            },
+                            className: "{{ category }}",
+                            close: true,
+                            stopOnFocus: true
+                        }).showToast();
+                    {% endfor %}
+                </script>
             {% endif %}
         {% endwith %}
         {% block content %}{% endblock %}
@@ -242,5 +284,221 @@
     {% endif %}
 
     <!-- License Monitor Script - Removed for simplified license system -->
+
+    <!-- Update Checker Script -->
+    <script>
+        let currentUpdateInfo = null;
+
+        // Check for updates on page load (only for authenticated users)
+        {% if current_user.is_authenticated %}
+        (async function checkForUpdates() {
+            try {
+                const response = await fetch('/api/v1/updates/check');
+                if (!response.ok) return;
+
+                const updateInfo = await response.json();
+                currentUpdateInfo = updateInfo;
+
+                if (updateInfo.update_available) {
+                    showUpdateNotification(updateInfo);
+                }
+            } catch (error) {
+                console.error('Update check failed:', error);
+            }
+        })();
+        {% endif %}
+
+        function showUpdateNotification(updateInfo) {
+            const notification = document.getElementById('updateNotification');
+            const versionSpan = document.getElementById('updateVersion');
+            const messageP = document.getElementById('updateMessage');
+
+            versionSpan.textContent = `v${updateInfo.latest_version}`;
+            messageP.textContent = updateInfo.release_name || 'A new version is available';
+
+            notification.style.display = 'block';
+        }
+
+        function dismissUpdateNotification() {
+            const notification = document.getElementById('updateNotification');
+            notification.style.display = 'none';
+        }
+
+        function showUpdateModal() {
+            if (!currentUpdateInfo) return;
+
+            const modal = document.createElement('div');
+            modal.className = 'update-modal';
+            modal.id = 'updateModal';
+
+            const hasInstaller = currentUpdateInfo.installer && currentUpdateInfo.installer.download_url;
+            const downloadSize = hasInstaller ? (currentUpdateInfo.installer.size / 1024 / 1024).toFixed(2) : '0';
+
+            modal.innerHTML = `
+                <div class="update-modal-content">
+                    <div class="update-modal-header">
+                        <h2>
+                            <i class="fas fa-download"></i>
+                            Update Available
+                        </h2>
+                        <button class="update-modal-close" onclick="closeUpdateModal()">
+                            <i class="fas fa-times"></i>
+                        </button>
+                    </div>
+                    <div class="update-modal-body">
+                        <div class="update-version-badge">
+                            Version ${currentUpdateInfo.latest_version}
+                        </div>
+                        <p><strong>Release Date:</strong> ${new Date(currentUpdateInfo.published_at).toLocaleDateString()}</p>
+                        ${hasInstaller ? `<p><strong>Download Size:</strong> ${downloadSize} MB</p>` : ''}
+
+                        <div class="update-release-notes">
+                            <h4>What's New:</h4>
+                            <div>${markdownToHtml(currentUpdateInfo.release_notes || 'No release notes available.')}</div>
+                        </div>
+
+                        <div class="update-progress" id="updateProgress">
+                            <div class="update-progress-bar">
+                                <div class="update-progress-fill" id="updateProgressFill"></div>
+                            </div>
+                            <p class="update-status" id="updateStatus">Preparing download...</p>
+                        </div>
+                    </div>
+                    <div class="update-modal-footer">
+                        <button class="update-cancel-btn" onclick="closeUpdateModal()">
+                            Later
+                        </button>
+                        ${hasInstaller ? `
+                            <button class="update-download-btn" onclick="downloadAndInstallUpdate()">
+                                <i class="fas fa-download"></i> Download & Install
+                            </button>
+                        ` : `
+                            <a href="${currentUpdateInfo.release_url}" target="_blank" class="update-download-btn" style="text-decoration: none; display: inline-block;">
+                                <i class="fas fa-external-link-alt"></i> View on GitHub
+                            </a>
+                        `}
+                    </div>
+                </div>
+            `;
+
+            document.body.appendChild(modal);
+            modal.style.display = 'block';
+        }
+
+        function closeUpdateModal() {
+            const modal = document.getElementById('updateModal');
+            if (modal) {
+                modal.remove();
+            }
+        }
+
+        async function downloadAndInstallUpdate() {
+            if (!currentUpdateInfo || !currentUpdateInfo.installer) {
+                alert('No installer available');
+                return;
+            }
+
+            const progressDiv = document.getElementById('updateProgress');
+            const progressFill = document.getElementById('updateProgressFill');
+            const statusText = document.getElementById('updateStatus');
+            const downloadBtn = document.querySelector('.update-download-btn');
+
+            try {
+                // Show progress
+                progressDiv.style.display = 'block';
+                downloadBtn.disabled = true;
+                downloadBtn.textContent = 'Downloading...';
+
+                // Download update
+                statusText.textContent = 'Downloading update...';
+                progressFill.style.width = '50%';
+
+                const downloadResponse = await fetch('/api/v1/updates/download', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        download_url: currentUpdateInfo.installer.download_url,
+                        asset_name: currentUpdateInfo.installer.name
+                    })
+                });
+
+                if (!downloadResponse.ok) {
+                    throw new Error('Download failed');
+                }
+
+                const downloadResult = await downloadResponse.json();
+
+                if (!downloadResult.success) {
+                    throw new Error(downloadResult.error || 'Download failed');
+                }
+
+                // Install update
+                statusText.textContent = 'Installing update...';
+                progressFill.style.width = '80%';
+
+                const installResponse = await fetch('/api/v1/updates/install', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCsrfToken()
+                    },
+                    body: JSON.stringify({
+                        installer_path: downloadResult.file_path,
+                        create_backup: true
+                    })
+                });
+
+                if (!installResponse.ok) {
+                    throw new Error('Installation failed');
+                }
+
+                const installResult = await installResponse.json();
+
+                if (installResult.success) {
+                    progressFill.style.width = '100%';
+                    statusText.textContent = 'Update installer launched! Please follow the installation wizard.';
+                    statusText.style.color = '#00A896';
+
+                    setTimeout(() => {
+                        closeUpdateModal();
+                        dismissUpdateNotification();
+                    }, 3000);
+                } else {
+                    throw new Error(installResult.error || 'Installation failed');
+                }
+
+            } catch (error) {
+                console.error('Update error:', error);
+                statusText.textContent = `Error: ${error.message}`;
+                statusText.style.color = '#dc3545';
+                downloadBtn.disabled = false;
+                downloadBtn.textContent = 'Retry';
+            }
+        }
+
+        function markdownToHtml(markdown) {
+            // Simple markdown converter for release notes
+            return markdown
+                .replace(/### (.*?)\n/g, '<h4>$1</h4>')
+                .replace(/## (.*?)\n/g, '<h3>$1</h3>')
+                .replace(/# (.*?)\n/g, '<h2>$1</h2>')
+                .replace(/\*\*(.*?)\*\*/g, '<strong>$1</strong>')
+                .replace(/\*(.*?)\*/g, '<em>$1</em>')
+                .replace(/\n/g, '<br>')
+                .replace(/- (.*?)<br>/g, '<li>$1</li>');
+        }
+
+        function getCsrfToken() {
+            const metaToken = document.querySelector('meta[name="csrf-token"]');
+            if (metaToken) {
+                return metaToken.getAttribute('content');
+            }
+            return '';
+        }
+    </script>
+
 </body>
 </html>

@@ -78,6 +78,9 @@ nul
 # Folder for excluded files
 DO_NOT_UPLOAD_TO_GITHUB/
 
+# Consolidated project files (development, docs, archives, etc.)
+project_files/
+
 # Test license files
 licenses/license_*.txt
 licenses/*test*.txt
@@ -89,9 +92,8 @@ licenses/enhanced_license_generator.py
 licenses/generate_test_license.py
 licenses/simple_license_generator.py
 
-# Installer Development Files
+# Installer Development Files (now in installers/ folder)
 *.iss
-installer_output/
 gtk3-runtime-*.exe
 *.ico
 *.png
@@ -99,12 +101,32 @@ gtk3-runtime-*.exe
 !static/**/*.png
 !docs/*.png
 !docs/**/*.png
-LICENSE_GENERATOR_GUI.bat
-license_generator_gui.py
 
-# Release Notes (moved to DO_NOT_UPLOAD_TO_GITHUB)
+# Release Notes (now in documents/ or archives/)
 RELEASE_NOTES_*.md
 INSTALLER_BUILD_GUIDE.md
+ENTERPRISE_INSTALLER_SUMMARY.md
+AUTO_UPDATE_SYSTEM.md
+IMPLEMENTATION_PLAN.md
+CRITICAL_FIXES.md
+CHANGES_SUMMARY.md
+QUICK_START_GUIDE.md
+PRODUCTION_SERVER_GUIDE.md
+TEST_AUTO_UPDATE.md
+INSTALLATION_README.txt
+POST_INSTALL_README.txt
+
+# Docker Images & Archives
+*.tar
+*.tar.gz
+aegis-scanner*.tar
+docker-image-*.tar
+
+# Installer Development
+installer_output/
+installer_banner.bmp
+installer_icon.bmp
+aegis_enterprise_installer.iss
 
 # OS
 Thumbs.db
@@ -113,3 +135,8 @@ Thumbs.db
 # Git
 .git/
 .gitattributes
+
+# Environment variables (contains secrets)
+.env
+.env.local
+.env.*.local
