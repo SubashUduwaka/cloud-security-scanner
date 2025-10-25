@@ -863,13 +863,30 @@
                     <i class="fas fa-info-circle"></i> Update Available
                 </h5>
                 <p id="updateDetailsText" style="margin: 0.5rem 0;"></p>
+                <p id="downloadInstructions" style="margin: 0.5rem 0; font-size: 0.9em; color: #666;">
+                    <i class="fas fa-info-circle"></i> The installer will be downloaded to your system automatically. You can access it from the downloads folder.
+                </p>
                 <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
-                    <a id="downloadUpdateBtn" href="#" target="_blank" class="button" style="background-color: #2196F3; border-color: #2196F3;">
-                        <i class="fas fa-download"></i> Download Update
-                    </a>
+                    <button id="downloadUpdateBtn" class="button" style="background-color: #2196F3; border-color: #2196F3;" onclick="startUpdateDownload()">
+                        <i class="fas fa-download"></i> Download Update (52MB)
+                    </button>
                     <a id="viewReleaseNotesBtn" href="#" target="_blank" class="button-secondary">
                         <i class="fas fa-file-alt"></i> View Release Notes
                     </a>
+                </div>
+
+                <!-- Download Progress (hidden initially) -->
+                <div id="downloadProgressContainer" style="display: none; margin-top: 1.5rem;">
+                    <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.5rem;">
+                        <span id="downloadProgressText">Downloading...</span>
+                        <span id="downloadProgressPercent">0%</span>
+                    </div>
+                    <div style="width: 100%; background: #e0e0e0; border-radius: 10px; overflow: hidden; height: 20px;">
+                        <div id="downloadProgressBar" style="width: 0%; background: linear-gradient(90deg, #2196F3, #00A896); height: 100%; transition: width 0.3s ease;"></div>
+                    </div>
+                    <button id="openDownloadFolderBtn" class="button" style="margin-top: 1rem; display: none; background-color: #4CAF50; border-color: #4CAF50;" onclick="openDownloadFolder()">
+                        <i class="fas fa-folder-open"></i> Open Download Folder
+                    </button>
                 </div>
             </div>
         </div>
@@ -1371,7 +1388,13 @@ function manualCheckForUpdates() {
                 // Set download URL - use installer asset if available, otherwise release page
                 const downloadUrl = (data.installer && data.installer.download_url) ? data.installer.download_url : data.release_url;
                 document.getElementById('downloadUpdateBtn').href = downloadUrl;
-                document.getElementById('downloadUpdateBtn').setAttribute('download', data.installer ? data.installer.name : '');
+
+                // Store installer info for download handler
+                window.updateInstallerInfo = {
+                    url: downloadUrl,
+                    name: data.installer ? data.installer.name : 'AegisCloudScanner_Setup.exe',
+                    size: data.installer ? data.installer.size : 0
+                };
 
                 document.getElementById('viewReleaseNotesBtn').href = data.release_url;
 
@@ -1432,6 +1455,104 @@ function showNotification(message, type = 'info') {
             }
         }, 300);
     }, 3000);
+}
+
+// Start update download via backend
+function startUpdateDownload() {
+    console.log('[Update Download] Starting download...');
+
+    if (!window.updateInstallerInfo) {
+        showNotification('Update information not available', 'error');
+        return;
+    }
+
+    const info = window.updateInstallerInfo;
+    const downloadBtn = document.getElementById('downloadUpdateBtn');
+    const progressContainer = document.getElementById('downloadProgressContainer');
+    const progressBar = document.getElementById('downloadProgressBar');
+    const progressPercent = document.getElementById('downloadProgressPercent');
+    const progressText = document.getElementById('downloadProgressText');
+    const openFolderBtn = document.getElementById('openDownloadFolderBtn');
+
+    // Disable button and show progress
+    downloadBtn.disabled = true;
+    downloadBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Downloading...';
+    progressContainer.style.display = 'block';
+    openFolderBtn.style.display = 'none';
+
+    // Start download via backend API
+    fetch('/api/v1/updates/download', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+            download_url: info.url,
+            asset_name: info.name
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            // Download complete
+            progressBar.style.width = '100%';
+            progressPercent.textContent = '100%';
+            progressText.textContent = 'Download complete!';
+            downloadBtn.innerHTML = '<i class="fas fa-check"></i> Downloaded';
+            openFolderBtn.style.display = 'block';
+            showNotification('Update downloaded successfully!', 'success');
+        } else {
+            throw new Error(data.error || 'Download failed');
+        }
+    })
+    .catch(error => {
+        console.error('[Update Download] Error:', error);
+        downloadBtn.disabled = false;
+        downloadBtn.innerHTML = '<i class="fas fa-download"></i> Download Update (52MB)';
+        progressContainer.style.display = 'none';
+        showNotification('Download failed: ' + error.message, 'error');
+    });
+
+    // Simulate progress (since we can't get real-time progress easily)
+    simulateDownloadProgress(progressBar, progressPercent, 60000); // 60 seconds estimate
+}
+
+// Simulate download progress
+function simulateDownloadProgress(progressBar, progressPercent, estimatedTime) {
+    let progress = 0;
+    const interval = 500; // Update every 500ms
+    const steps = estimatedTime / interval;
+    const increment = 95 / steps; // Go to 95%, then wait for actual completion
+
+    const progressInterval = setInterval(() => {
+        progress += increment;
+        if (progress >= 95) {
+            progress = 95;
+            clearInterval(progressInterval);
+        }
+        progressBar.style.width = progress + '%';
+        progressPercent.textContent = Math.round(progress) + '%';
+    }, interval);
+}
+
+// Open download folder
+function openDownloadFolder() {
+    // Call backend to open folder
+    fetch('/api/v1/updates/open-download-folder', {
+        method: 'POST'
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Opening downloads folder...', 'success');
+        } else {
+            showNotification('Could not open folder', 'error');
+        }
+    })
+    .catch(error => {
+        console.error('Error opening folder:', error);
+        showNotification('Error opening folder', 'error');
+    });
 }
 
 // Load current version on page load

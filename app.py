@@ -6217,6 +6217,31 @@ def download_update():
         logging.error(f"Error downloading update: {e}", exc_info=True)
         return jsonify({"error": str(e)}), 500
 
+@app.route('/api/v1/updates/open-download-folder', methods=['POST'])
+@login_required
+def open_download_folder():
+    """Open the downloads folder in file explorer"""
+    try:
+        downloads_dir = os.path.join(USER_DATA_DIR, 'downloads')
+
+        # Create directory if it doesn't exist
+        os.makedirs(downloads_dir, exist_ok=True)
+
+        # Open folder in file explorer
+        if sys.platform == "win32":
+            os.startfile(downloads_dir)
+        elif sys.platform == "darwin":
+            subprocess.Popen(["open", downloads_dir])
+        else:
+            subprocess.Popen(["xdg-open", downloads_dir])
+
+        log_audit("Opened Download Folder", details=f"Path: {downloads_dir}", user=current_user)
+        return jsonify({"success": True, "folder_path": downloads_dir}), 200
+
+    except Exception as e:
+        logging.error(f"Error opening download folder: {e}", exc_info=True)
+        return jsonify({"success": False, "error": str(e)}), 500
+
 @app.route('/api/v1/updates/install', methods=['POST'])
 @login_required
 @admin_required
