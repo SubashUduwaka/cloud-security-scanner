@@ -446,7 +446,7 @@ MAIL_SERVER=smtp.gmail.com
 MAIL_PORT=587
 MAIL_USE_TLS=True
 MAIL_USERNAME=your-email@gmail.com
-MAIL_PASSWORD=your-email-password
+MAIL_PASSWORD=YOUR_APP_SPECIFIC_PASSWORD_HERE
 
 # Security Configuration
 SESSION_PERMANENT=False
