@@ -834,6 +834,46 @@
             </div>
         </div>
     </div>
+
+    <!-- Software Updates Section -->
+    <div class="settings-section" id="software-updates-section">
+        <h3><i class="fas fa-sync-alt"></i> Software Updates</h3>
+        <p>Keep Aegis Cloud Scanner up to date with the latest features and security patches.</p>
+
+        <div class="sub-section">
+            <h4><i class="fas fa-download"></i> Check for Updates</h4>
+            <div class="control-grid">
+                <div class="control-item" style="border-left-color: #2196F3;">
+                    <div class="control-info">
+                        <h5 style="color: #2196F3;">Current Version</h5>
+                        <p>Version: <strong id="currentVersionDisplay">Loading...</strong></p>
+                        <p id="updateStatusMessage">Checking for updates...</p>
+                    </div>
+                    <div class="control-actions">
+                        <button type="button" class="button" onclick="manualCheckForUpdates()" id="checkUpdateBtn">
+                            <i class="fas fa-sync-alt"></i> Check for Updates
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Update Available Panel (hidden by default) -->
+            <div id="updateAvailablePanel" class="update-available-panel" style="display: none; margin-top: 1.5rem; padding: 1.5rem; background: linear-gradient(135deg, #E3F2FD, #E8F5E9); border-radius: 8px; border-left: 4px solid #2196F3;">
+                <h5 style="color: #1976D2; margin-top: 0;">
+                    <i class="fas fa-info-circle"></i> Update Available
+                </h5>
+                <p id="updateDetailsText" style="margin: 0.5rem 0;"></p>
+                <div style="display: flex; gap: 1rem; margin-top: 1rem; flex-wrap: wrap;">
+                    <a id="downloadUpdateBtn" href="#" target="_blank" class="button" style="background-color: #2196F3; border-color: #2196F3;">
+                        <i class="fas fa-download"></i> Download Update
+                    </a>
+                    <a id="viewReleaseNotesBtn" href="#" target="_blank" class="button-secondary">
+                        <i class="fas fa-file-alt"></i> View Release Notes
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
     {% endif %}
 </div>
 
@@ -1280,6 +1320,126 @@ function getCsrfToken() {
 
     return '';
 }
+
+// ============================================
+// Software Update Checking
+// ============================================
+function loadCurrentVersion() {
+    fetch('/api/v1/updates/current-version')
+        .then(response => response.json())
+        .then(data => {
+            document.getElementById('currentVersionDisplay').textContent = data.version;
+            document.getElementById('updateStatusMessage').textContent = 'Click "Check for Updates" to see if a new version is available.';
+            document.getElementById('updateStatusMessage').style.color = '#6c757d';
+        })
+        .catch(error => {
+            console.error('Error loading current version:', error);
+            document.getElementById('currentVersionDisplay').textContent = 'Unknown';
+            document.getElementById('updateStatusMessage').textContent = 'Error loading version information.';
+            document.getElementById('updateStatusMessage').style.color = '#dc3545';
+        });
+}
+
+function manualCheckForUpdates() {
+    const btn = document.getElementById('checkUpdateBtn');
+    const statusMsg = document.getElementById('updateStatusMessage');
+    const updatePanel = document.getElementById('updateAvailablePanel');
+
+    // Disable button and show loading state
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking...';
+    statusMsg.textContent = 'Checking for updates...';
+    statusMsg.style.color = '#2196F3';
+    updatePanel.style.display = 'none';
+
+    fetch('/api/v1/updates/check?force=true')
+        .then(response => response.json())
+        .then(data => {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Check for Updates';
+
+            if (data.update_available) {
+                // Show update available
+                statusMsg.textContent = `New version ${data.latest_version} is available!`;
+                statusMsg.style.color = '#28a745';
+
+                // Show update panel
+                updatePanel.style.display = 'block';
+                document.getElementById('updateDetailsText').textContent =
+                    `A new version (${data.latest_version}) is available. You are currently running version ${data.current_version}.`;
+
+                // Set download URL - use installer asset if available, otherwise release page
+                const downloadUrl = (data.installer && data.installer.download_url) ? data.installer.download_url : data.release_url;
+                document.getElementById('downloadUpdateBtn').href = downloadUrl;
+                document.getElementById('downloadUpdateBtn').setAttribute('download', data.installer ? data.installer.name : '');
+
+                document.getElementById('viewReleaseNotesBtn').href = data.release_url;
+
+                // Show notification
+                showNotification('Update available: ' + data.latest_version, 'info');
+            } else {
+                // No update available
+                statusMsg.textContent = 'You are running the latest version!';
+                statusMsg.style.color = '#28a745';
+                showNotification('Your application is up to date!', 'success');
+            }
+        })
+        .catch(error => {
+            console.error('Error checking for updates:', error);
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fas fa-sync-alt"></i> Check for Updates';
+            statusMsg.textContent = 'Error checking for updates. Please try again later.';
+            statusMsg.style.color = '#dc3545';
+            showNotification('Failed to check for updates', 'error');
+        });
+}
+
+function showNotification(message, type = 'info') {
+    // Create notification element
+    const notification = document.createElement('div');
+    notification.className = `notification notification-${type}`;
+    notification.style.cssText = `
+        position: fixed;
+        top: 20px;
+        right: 20px;
+        padding: 12px 20px;
+        border-radius: 4px;
+        color: white;
+        font-weight: bold;
+        z-index: 4000;
+        transition: all 0.3s ease;
+        max-width: 300px;
+    `;
+
+    // Set background color based on type
+    const colors = {
+        success: '#4CAF50',
+        error: '#D64550',
+        warning: '#FF9800',
+        info: '#2196F3'
+    };
+    notification.style.backgroundColor = colors[type] || colors.info;
+
+    notification.textContent = message;
+    document.body.appendChild(notification);
+
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        notification.style.opacity = '0';
+        setTimeout(() => {
+            if (notification.parentNode) {
+                document.body.removeChild(notification);
+            }
+        }, 300);
+    }, 3000);
+}
+
+// Load current version on page load
+document.addEventListener('DOMContentLoaded', function() {
+    if (document.getElementById('currentVersionDisplay')) {
+        loadCurrentVersion();
+    }
+});
 </script>
 
 {% endblock %}
